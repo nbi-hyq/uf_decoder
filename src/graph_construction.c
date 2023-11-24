@@ -32,23 +32,22 @@ Graph get_2d_toric_code(int lsize){
       g.len_nb[3*(y*lsize+x)] = num_nb_max;
       g.is_qbt[3*(y*lsize+x)] = 0; // syndrome
       /* qubit nodes */
-      g.nn[(3*(y*lsize+x)+1)*num_nb_max] = g.nn[3*(y*lsize+x)*num_nb_max];
+      g.nn[(3*(y*lsize+x)+1)*num_nb_max] = 3*(y*lsize+x);
       if(x+1 < lsize){
-        g.nn[(3*(y*lsize+x)+1)*num_nb_max + 1] = g.nn[3*(y*lsize+x+1)*num_nb_max];
+        g.nn[(3*(y*lsize+x)+1)*num_nb_max + 1] = 3*(y*lsize+x+1);
       } else {
-        g.nn[(3*(y*lsize+x)+1)*num_nb_max + 1] = g.nn[3*(y*lsize+0)*num_nb_max];
+        g.nn[(3*(y*lsize+x)+1)*num_nb_max + 1] = 3*(y*lsize+0);
       }
       g.len_nb[3*(y*lsize+x)+1] = 2;
       g.is_qbt[3*(y*lsize+x)+1] = 1; // qubit
-      
-      g.nn[(3*(y*lsize+x)+2)*num_nb_max] = g.nn[3*(y*lsize+x)*num_nb_max];
+      g.nn[(3*(y*lsize+x)+2)*num_nb_max] = 3*(y*lsize+x);
       if(y+1 < lsize){
-        g.nn[(3*(y*lsize+x)+2)*num_nb_max + 1] = g.nn[3*((y+1)*lsize+x)*num_nb_max];
+        g.nn[(3*(y*lsize+x)+2)*num_nb_max + 1] = 3*((y+1)*lsize+x);
       } else {
-        g.nn[(3*(y*lsize+x)+2)*num_nb_max + 1] = g.nn[3*x*num_nb_max];
+        g.nn[(3*(y*lsize+x)+2)*num_nb_max + 1] = 3*x;
       }
       g.len_nb[3*(y*lsize+x)+2] = 2;
-      g.is_qbt[3*(y*lsize+x)+1] = 1; // qubit
+      g.is_qbt[3*(y*lsize+x)+2] = 1; // qubit
     }
   }
   return g;

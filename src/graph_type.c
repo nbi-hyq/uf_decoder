@@ -7,11 +7,11 @@
 Graph new_graph(int nnode, uint8_t num_nb_max){
   Graph g;
   g.ptr = malloc(nnode * sizeof(int));  // several meanings: (if ptr[i]>0: parent index ("pointer"), elif ptr[i]<0: syndrome parity of component, qubits and syndromes
-  g.nn = malloc(nnode * (size_t)num_nb_max * sizeof(int)); // neighbors of a node (has a lot of zeros for tannder graph -- improve)
+  g.nn = malloc(nnode * (size_t)num_nb_max * sizeof(int)); // neighbors of a node (TBD: has a lot of zeros for tanner graph due to different vertex degrees)
   g.len_nb = malloc(nnode); // until which index there are neighbors (255 neighbors max)
   g.is_qbt = malloc(nnode * sizeof(bool)); // 0: syndrome, 1: qubit
   g.num_nb_max = num_nb_max; // maximum number of neighbors per node
-  g.nnode = nnode; // number of nodes or central qubits
+  g.nnode = nnode; // number of nodes (qubits + syndromes)
 
   g.syndrome = malloc(nnode * sizeof(bool)); // syndrome (for node type 1)
   g.erasure = malloc(nnode * sizeof(bool)); // erasure (for node type 0)

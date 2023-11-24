@@ -6,44 +6,21 @@
 #include "../inc/global.h"
 #include "../inc/graph_type.h"
 #include "../inc/graph_construction.h"
-#define CSTD_RAND_MAX (0x7FFF)
 
-/* get random number with more than 32-bit precision (uniform) */
-static double rand_63_precision(void) {
-  // 0x7FFF: RAND_MAX guaranteed by C standard.
-  const int64_t b0 = rand() & CSTD_RAND_MAX;
-  const int64_t b1 = rand() & CSTD_RAND_MAX;
-  const int64_t b2 = rand() & CSTD_RAND_MAX;
-  const int64_t b3 = rand() & CSTD_RAND_MAX;
-  const int64_t b4 = rand() & 0x7;
-  const int64_t n = (b0) | (b1 << 15) | (b2 << 30) | (b3 << 45) | (b4 << 60);
-  return (double)n/(double)INT64_MAX;
-}
-
-/* get array with shuffled indices */
-static int64_t* permutation(int64_t len){
-  int64_t* array;
-  array = malloc(len * sizeof(int64_t));
-  int64_t i,j,temp;
-  for (i=0;i<len;i++) array[i] = i;
-  for (i=0;i<len;i++){
-    j = i + (int64_t)((len-1-i) * rand_63_precision());
-    temp = array[i];
-    array[i] = array[j];
-    array[j] = temp;
-  }
-  return array;
+/* get random number in range [0, 1] */
+static float rand_float(){
+  return (float)(rand() & CSTD_RAND_MAX) / (float)CSTD_RAND_MAX;
 }
 
 /* find root and path compression */
-static int64_t findroot(Graph* g, int64_t i){
+static int findroot(Graph* g, int i){
   if (g->ptr[i]<0) return i;  // return index of root node
   return g->ptr[i] = findroot(g, g->ptr[i]);  // recursively go to root node, plus: do path-compression on the fly
 }
 
 /* merge two graph fragments in g->ptr representation, return new root node index */
-static int64_t merge_root(Graph* g, int64_t r1, int64_t r2){
-  if (g->parity[r1] && g->parity[r2]) g->num_parity--;
+static int merge_root(Graph* g, int r1, int r2){
+  if (g->parity[r1] && g->parity[r2]) g->num_parity -= 2;
   if (g->ptr[r1] > g->ptr[r2]){
     g->parity[r2] = (g->parity[r1] + g->parity[r2]) % 2;
     g->ptr[r2] += g->ptr[r1]; // add size of smaller component to bigger one
@@ -58,21 +35,23 @@ static int64_t merge_root(Graph* g, int64_t r1, int64_t r2){
   return r1;
 }
 
-/* apply erasures and Pauli errors, compute syndromes at same time */
-int apply_erasure_and_error(Graph* g, double p_erasure, double p_error){
+/* apply erasures and Pauli errors, compute syndromes at same time
+   p_erasure: probability of erasure
+   p_error: probability of error */
+int apply_erasure_and_error(Graph* g, float p_erasure, float p_error){
   memset(g->erasure, 0, g->nnode * sizeof(bool));
   memset(g->syndrome, 0, g->nnode * sizeof(bool));
   memset(g->error, 0, g->nnode * sizeof(bool));
   int num_syndromes = 0;
   for(int i=0; i < g->nnode; i++){
     if(g->is_qbt[i]){
-      g->erasure[i] = (rand_63_precision() < p_erasure);
-      if ((g->erasure[i] && rand_63_precision() < 0.5) || (rand_63_precision() < p_error)) {
+      g->erasure[i] = (rand_float() < p_erasure);
+      if ((g->erasure[i] && rand_float() < 0.5) || (rand_float() < p_error)) { // erasure makes error with 50%
         g->error[i] = 1;
-        g->syndrome[g->nn[i*g->num_nb_max]] = (g->syndrome[g->nn[i*g->num_nb_max]] + 1) % 2; // 1st syndrome neighbor
         num_syndromes += (g->syndrome[g->nn[i*g->num_nb_max]] ? -1 : +1);
-        g->syndrome[g->nn[i*g->num_nb_max+1]] = (g->syndrome[g->nn[i*g->num_nb_max+1]] + 1) % 2; // 2nd syndrome neighbor
+        g->syndrome[g->nn[i*g->num_nb_max]] = (g->syndrome[g->nn[i*g->num_nb_max]] + 1) % 2; // 1st syndrome neighbor
         num_syndromes += (g->syndrome[g->nn[i*g->num_nb_max+1]] ? -1 : +1);
+        g->syndrome[g->nn[i*g->num_nb_max+1]] = (g->syndrome[g->nn[i*g->num_nb_max+1]] + 1) % 2; // 2nd syndrome neighbor
       }
     }
   }
@@ -80,8 +59,9 @@ int apply_erasure_and_error(Graph* g, double p_erasure, double p_error){
   return num_syndromes;
 }
 
-/* get clusters with even number of syndromes by breadth-first traversal */
-void get_even_clusters_bfs(Graph* g, int num_syndromes){
+/* get clusters with even number of syndromes by breadth-first traversal
+   num_syndromes: number of syndromes signalling errors */
+int get_even_clusters_bfs(Graph* g, int num_syndromes){
   int num_seed = 0; // number of syndromes and erasures
   int* bfs_list = malloc(g->nnode * sizeof(int));
   bool* visited = malloc(g->nnode * sizeof(bool));
@@ -94,8 +74,8 @@ void get_even_clusters_bfs(Graph* g, int num_syndromes){
   g->num_parity = num_syndromes; // number of unpaired syndromes
 
   int bfs_pos = 0; // current position for BFS
-  int bfs_next = 0; // next free position in bfs_list
-  while(g->num_parity > 0 || bfs_pos < num_seed){
+  int bfs_next = num_seed; // next free position in bfs_list
+  while(g->num_parity > 0){ // TBD: check: || bfs_pos < num_seed
     int n = bfs_list[bfs_pos];
     visited[n] = true;
     int r_n = findroot(g, n);
@@ -112,6 +92,6 @@ void get_even_clusters_bfs(Graph* g, int num_syndromes){
   }
   free(bfs_list);
   free(visited);
+  return bfs_next;
 }
-
 
