@@ -1,5 +1,6 @@
 tests = [
   'toric_2d_square',
+  'toric_2d_triangular',
 ]
 
 foreach t : tests

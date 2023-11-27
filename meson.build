@@ -9,6 +9,7 @@ endif
 
 examples = [
   'example_2d_toric',
+  'example_2d_toric_triangular',
 ]
 
 foreach t : examples
