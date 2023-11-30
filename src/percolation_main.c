@@ -62,36 +62,52 @@ int apply_erasure_and_error(Graph* g, float p_erasure, float p_error){
 /* get clusters with even number of syndromes by breadth-first traversal
    num_syndromes: number of syndromes signalling errors */
 int get_even_clusters_bfs(Graph* g, int num_syndromes){
-  int num_seed = 0; // number of syndromes and erasures
-  int* bfs_list = malloc(g->nnode * sizeof(int));
-  bool* visited = malloc(g->nnode * sizeof(bool));
-  memset(visited, 0, g->nnode * sizeof(bool));
+  int bfs_next = 0; // next free position in g->bfs_list
+  memset(g->visited, 0, g->nnode * sizeof(bool));
   for(int i=0; i < g->nnode; i++){
-    if (g->erasure[i] || g->syndrome[i]) bfs_list[num_seed++] = i;
+    if (g->erasure[i] || g->syndrome[i]) g->bfs_list[bfs_next++] = i; // seed
     g->ptr[i] = -1; // all isolated nodes in beginning
   }
   g->big = 0; // size of largest connected component
   g->num_parity = num_syndromes; // number of unpaired syndromes
-
   int bfs_pos = 0; // current position for BFS
-  int bfs_next = num_seed; // next free position in bfs_list
-  while(g->num_parity > 0){ // TBD: check: || bfs_pos < num_seed
-    int n = bfs_list[bfs_pos];
-    visited[n] = true;
+  while(g->num_parity > 0){
+    int n = g->bfs_list[bfs_pos];
+    g->visited[n] = true;
     int r_n = findroot(g, n);
     for(int i=0; i<g->len_nb[n]; i++){
       int nb = g->nn[n*g->num_nb_max + i];
       int r_nb = findroot(g, nb);
       if(r_n != r_nb) r_n = merge_root(g, r_n, r_nb);
-      if (visited[nb] == false) {
-        bfs_list[bfs_next++] = nb;
-        visited[nb] = true;
+      if (g->visited[nb] == false) {
+        g->bfs_list[bfs_next++] = nb;
+        g->visited[nb] = true;
       }
     }
     bfs_pos++;
   }
-  free(bfs_list);
-  free(visited);
-  return bfs_next;
+  return bfs_pos;
+}
+
+/* get forest spaning the erasure/syndrome clusters
+   num_bfs: bfs_pos from previous run */
+Forest get_forest(Graph* g, int num_bfs){
+  Forest f = new_forest(g->nnode);
+  memset(f.visited, 0, f.nnode * sizeof(bool)); // can only change from 0->1
+  memset(f.leaf, 1, f.nnode * sizeof(bool)); // can only change from 1->0
+  for(int i=0; i<num_bfs; i++){
+    int n = g->bfs_list[i];
+    int r_n = findroot(g, n);
+    for(uint8_t j=0; j<g->len_nb[n]; j++){
+      int nb = g->nn[n*g->num_nb_max+j];
+      int r_nb = findroot(g, nb);
+      if(!f.visited[nb] && r_n==r_nb){
+        f.leaf[n] = 0;
+        f.visited[nb] = 1;
+        f.root[nb] = n;
+      }
+    }
+  }
+  return f;
 }
 
