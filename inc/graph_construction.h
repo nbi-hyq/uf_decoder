@@ -4,4 +4,6 @@
 Graph get_2d_toric_code(int lsize);
 Graph get_2d_triangular_toric_code(int lsize);
 
+int validate_graph(Graph* g);
+
 #endif

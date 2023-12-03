@@ -12,13 +12,13 @@ int main(){
   int lsize = 1000; // size in each dimension
   float p_erasure = 0.02; // probability of erasure
   float p_error = 0.05; // probability of error;
-  int r = 0;
 
   Graph g = get_2d_toric_code(lsize);
   int num_syndromes = apply_erasure_and_error(&g, p_erasure, p_error);
   int num_bfs = get_even_clusters_bfs(&g, num_syndromes);
   printf("%i %i\n", num_syndromes, num_bfs);
 
+  int r = validate_graph(&g);
   free_graph(&g);
   return r;
 }

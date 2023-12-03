@@ -126,3 +126,24 @@ Graph get_2d_triangular_toric_code(int lsize){
   return g;
 }
 
+/* make a few checks if graph can be correct */
+int validate_graph(Graph* g){
+  for(int n=0; n<g->nnode; n++){
+    if(g->is_qbt[n] && g->len_nb[n] != 2) return 1;
+    for(uint8_t k=0; k<g->len_nb[n]; k++){
+      int nb = g->nn[n*g->num_nb_max+k];
+      if(nb == n) return 2; // no self-edges
+      if(g->is_qbt[n] == g->is_qbt[nb]) return 3; // qubit connected to syndrome (bi-partite)
+      bool unidir = true;
+      for(uint8_t j=0; j<g->len_nb[nb]; j++){
+        if(g->nn[nb*g->num_nb_max+j] == n){
+          unidir = false;
+          break;
+        }
+      }
+      if(unidir) return 4; // connection is not bi-directional
+    }
+  }
+  return 0;
+}
+
