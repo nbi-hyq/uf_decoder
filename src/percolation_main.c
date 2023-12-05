@@ -114,7 +114,6 @@ Forest get_forest(Graph* g, int num_bfs){
             f.visited[nb] = 1;
             f.leaf[m] = 0;
             f.parent[nb] = m;
-            //printf("%i --> %i\n",nb, m); printf("%i %i\n",bfs_next, num_bfs);
           }
         }
         bfs_pos++;
@@ -134,36 +133,34 @@ int peel_forest(Forest* f, Graph* g, bool print){
   while(num_leaf > 0){
     int l = l_leaf[num_leaf-1];
     f->visited[l] = 0; // unvisit
-    if(g->is_qbt[l]){ // leaf is qubit/edge       TBD: simplify with       int p = f->parent[l];
-      int u = g->nn[l*g->num_nb_max+0];
-      int v = g->nn[l*g->num_nb_max+1];
-      if (f->visited[u]){ // if still visited, u cannot be the pendent vertex
-        u = v;
-        v = g->nn[l*g->num_nb_max+0];
-      }
-      if(g->syndrome[u]){
+    if(g->is_qbt[l]){ // leaf is qubit/edge
+      int v = f->parent[l];
+      int u = (g->nn[l*g->num_nb_max+0] != v ? g->nn[l*g->num_nb_max+0] : g->nn[l*g->num_nb_max+1]); // pendent vertex
+      int r = findroot(g, l);
+      if(g->syndrome[u] && findroot(g, u) == r){ // flip pendent vertex if it belongs to component
         g->syndrome[v] = !g->syndrome[v]; // flip
+        g->syndrome[u] = !g->syndrome[u]; // flip
         g->decode[l] = 1; // decoder output
         if(print) printf("%i \n", l); // print decoder output
       }
-      uint8_t cnt=0;
-      for(uint8_t j=0; j<g->len_nb[v]; j++) if(f->visited[g->nn[v*g->num_nb_max+j]]) cnt++; // count visited neighbors to decide if leaf or not
-      if(cnt > 1) num_leaf--; // one leaf less
-      else l_leaf[num_leaf-1] = v; // vertex becomes leaf
-    } else { // leaf is syndrome/vertex
-      /*int p = f->parent[l];
-      if(p >= 0) l_leaf[num_leaf-1] = p;
-      else num_leaf--;*/
-      uint8_t cnt=0;
-      for(uint8_t j=0; j<g->len_nb[l]; j++){
-        int nb = g->nn[l*g->num_nb_max+j];
-        if(f->visited[nb]){
-          l_leaf[num_leaf-1] = nb; // qubit on edge becomes new leaf
-          cnt++;
+      bool is_leaf = true;
+      for(uint8_t j=0; j<g->len_nb[v]; j++){
+        int nb = g->nn[v*g->num_nb_max+j];
+        if(f->visited[nb] && f->parent[nb] == v){ // there is child node that is still visited --> v is no leaf
+          is_leaf=false;
           break;
         }
       }
-      if(cnt == 0) num_leaf--;
+      if(is_leaf) l_leaf[num_leaf-1] = v;
+      else num_leaf--; // one leaf less
+    } else { // leaf is syndrome/vertex
+      int p = f->parent[l];
+      if(p >= 0){ // there is a parent
+        if(f->parent[p] >= 0) l_leaf[num_leaf-1] = p; // parent is not a root
+        else if(!f->visited[g->nn[p*g->num_nb_max+0]] && !f->visited[g->nn[p*g->num_nb_max+1]]) l_leaf[num_leaf-1] = p; // parent is root but last node in cluster
+        else num_leaf--; // don't make root node leaf before it is last node in cluster
+      }
+      else num_leaf--;
     }
   }
   free(l_leaf);
