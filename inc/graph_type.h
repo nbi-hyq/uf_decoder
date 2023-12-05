@@ -12,12 +12,13 @@ typedef struct {
   bool* error;
   bool* parity;
   bool* visited;
+  bool* decode;
   int nnode, num_edges, num_parity, big;
   uint8_t num_nb_max;
 } Graph;
 
 typedef struct {
-  int* root;
+  int* parent;
   bool* visited;
   bool* leaf;
   int nnode;

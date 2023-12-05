@@ -86,28 +86,87 @@ int get_even_clusters_bfs(Graph* g, int num_syndromes){
     }
     bfs_pos++;
   }
-  return bfs_pos;
+  return bfs_next;
 }
 
 /* get forest spaning the erasure/syndrome clusters
-   num_bfs: bfs_pos from previous run */
+   num_bfs: final number in bfs list in get_even_clusters_bfs (bfs_next) */
 Forest get_forest(Graph* g, int num_bfs){
   Forest f = new_forest(g->nnode);
   memset(f.visited, 0, f.nnode * sizeof(bool)); // can only change from 0->1
   memset(f.leaf, 1, f.nnode * sizeof(bool)); // can only change from 1->0
+  for(int i=0; i<f.nnode; i++) f.parent[i] = -1; // -1 indicated tree root
+  int* l_bfs = malloc(num_bfs * sizeof(int)); // another time BFS to build forest
   for(int i=0; i<num_bfs; i++){
     int n = g->bfs_list[i];
-    int r_n = findroot(g, n);
-    for(uint8_t j=0; j<g->len_nb[n]; j++){
-      int nb = g->nn[n*g->num_nb_max+j];
-      int r_nb = findroot(g, nb);
-      if(!f.visited[nb] && r_n==r_nb){
-        f.leaf[n] = 0;
-        f.visited[nb] = 1;
-        f.root[nb] = n;
+    if(!f.visited[n]){ // n is root point of tree
+      int r_n = findroot(g, n);
+      int bfs_next = 1; // next free position
+      int bfs_pos = 0; // current position for BFS
+      l_bfs[0] = n;
+      f.visited[n] = 1;
+      while(bfs_pos < bfs_next){ // crawl cluster with BFS to create spanning tree
+        int m = l_bfs[bfs_pos];
+        for(uint8_t j=0; j<g->len_nb[m]; j++){ // look for neighbors that are not in tree yet
+          int nb = g->nn[m*g->num_nb_max+j];
+          if(!f.visited[nb] && r_n==findroot(g, nb)){ // neighbor not visited, same component
+            l_bfs[bfs_next++] = nb;
+            f.visited[nb] = 1;
+            f.leaf[m] = 0;
+            f.parent[nb] = m;
+            //printf("%i --> %i\n",nb, m); printf("%i %i\n",bfs_next, num_bfs);
+          }
+        }
+        bfs_pos++;
       }
     }
   }
+  free(l_bfs);
   return f;
+}
+
+/* use the spanning forest to create the decoder output */
+int peel_forest(Forest* f, Graph* g, bool print){
+  memset(g->decode, 0, g->nnode * sizeof(bool));
+  int num_leaf = 0;
+  int* l_leaf = malloc(f->nnode*sizeof(int));
+  for(int i=0; i<f->nnode; i++) if(f->leaf[i] && f->visited[i]) l_leaf[num_leaf++] = i;
+  while(num_leaf > 0){
+    int l = l_leaf[num_leaf-1];
+    f->visited[l] = 0; // unvisit
+    if(g->is_qbt[l]){ // leaf is qubit/edge       TBD: simplify with       int p = f->parent[l];
+      int u = g->nn[l*g->num_nb_max+0];
+      int v = g->nn[l*g->num_nb_max+1];
+      if (f->visited[u]){ // if still visited, u cannot be the pendent vertex
+        u = v;
+        v = g->nn[l*g->num_nb_max+0];
+      }
+      if(g->syndrome[u]){
+        g->syndrome[v] = !g->syndrome[v]; // flip
+        g->decode[l] = 1; // decoder output
+        if(print) printf("%i \n", l); // print decoder output
+      }
+      uint8_t cnt=0;
+      for(uint8_t j=0; j<g->len_nb[v]; j++) if(f->visited[g->nn[v*g->num_nb_max+j]]) cnt++; // count visited neighbors to decide if leaf or not
+      if(cnt > 1) num_leaf--; // one leaf less
+      else l_leaf[num_leaf-1] = v; // vertex becomes leaf
+    } else { // leaf is syndrome/vertex
+      /*int p = f->parent[l];
+      if(p >= 0) l_leaf[num_leaf-1] = p;
+      else num_leaf--;*/
+      uint8_t cnt=0;
+      for(uint8_t j=0; j<g->len_nb[l]; j++){
+        int nb = g->nn[l*g->num_nb_max+j];
+        if(f->visited[nb]){
+          l_leaf[num_leaf-1] = nb; // qubit on edge becomes new leaf
+          cnt++;
+          break;
+        }
+      }
+      if(cnt == 0) num_leaf--;
+    }
+  }
+  free(l_leaf);
+  return 0;
 }
 

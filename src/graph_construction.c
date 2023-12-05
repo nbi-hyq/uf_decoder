@@ -147,3 +147,78 @@ int validate_graph(Graph* g){
   return 0;
 }
 
+/* visualize errors of square lattice surface code */
+int visualize_error(Graph* g, int size){
+  for(int y=0; y<size; y++){
+    for(int x=0; x<size; x++){
+      int n = x + y*size;
+      if(g->syndrome[3*n]) printf("x");
+      else printf("o");
+      if(g->error[3*n+1]) printf("e");
+      else printf("-");
+    }
+    printf("\n");
+    for(int x=0; x<size; x++){
+      int n = x + y*size;
+      if(g->error[3*n+2]) printf("e");
+      else printf("|");
+      printf(" ");
+    }
+    printf("\n");
+  }
+  printf("--------------------------\n");
+  return 0;
+}
+
+/* visualize decoding of square lattice surface code */
+int visualize_decode(Graph* g, int size){
+  for(int y=0; y<size; y++){
+    for(int x=0; x<size; x++){
+      int n = x + y*size;
+      printf("o");
+      if(g->error[3*n+1] && !g->decode[3*n+1]) printf("e");
+      else if(!g->error[3*n+1] && g->decode[3*n+1]) printf("c");
+      else if(g->error[3*n+1] && g->decode[3*n+1]) printf("b");
+      else printf("-");
+    }
+    printf("\n");
+    for(int x=0; x<size; x++){
+      int n = x + y*size;
+      if(g->error[3*n+2] && !g->decode[3*n+2]) printf("e");
+      else if(!g->error[3*n+2] && g->decode[3*n+2]) printf("c");
+      else if(g->error[3*n+2] && g->decode[3*n+2]) printf("b");
+      else printf("|");
+      printf(" ");
+    }
+    printf("\n");
+  }
+  printf("--------------------------\n");
+  return 0;
+}
+
+/* visualize syndrome validation forest */
+int visualize_forest(Forest* f, int size){
+  for(int y=0; y<size; y++){
+    for(int x=0; x<size; x++){
+      int n = x + y*size;
+      if(f->leaf[3*n] && f->visited[3*n]) printf("l");
+      else if(f->visited[3*n]) printf("v");
+      else printf(".");
+      if(f->leaf[3*n+1] && f->visited[3*n+1]) printf("l");
+      else if(f->visited[3*n+1]) printf("v");
+      else printf(".");
+    }
+    printf("\n");
+    for(int x=0; x<size; x++){
+      int n = x + y*size;
+      if(f->leaf[3*n+2] && f->visited[3*n+2]) printf("l");
+      else if(f->visited[3*n+2]) printf("v");
+      else printf(".");
+      printf(" ");
+    }
+    printf("\n");
+  }
+  printf("--------------------------\n");
+  return 0;
+}
+
