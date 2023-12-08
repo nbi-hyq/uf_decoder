@@ -19,6 +19,8 @@ Graph new_graph(int nnode, uint8_t num_nb_max){
   g.error = malloc(nnode * sizeof(bool)); // error (for node type 1)
   g.parity = malloc(nnode * sizeof(bool)); // parity of syndromes in cluster (has meaning only for root node), 0: even number of syndromes
   g.decode = malloc(nnode * sizeof(bool)); // decoder output
+  g.crr_surf_x = NULL; // coorelation surafce 1 (for checking logical error)
+  g.crr_surf_y = NULL; // coorelation surafce 2 (for checking logical error)
   g.num_parity = 0; // number of unpaired syndromes
   g.big = 0; // size of largest connected cluster
   return g;
@@ -46,6 +48,8 @@ void free_graph(Graph* g){
   free(g->decode);
   free(g->visited);
   free(g->bfs_list);
+  free(g->crr_surf_x);
+  free(g->crr_surf_y);
 }
 
 void free_forest(Forest* f){

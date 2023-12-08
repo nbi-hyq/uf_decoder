@@ -13,7 +13,9 @@ typedef struct {
   bool* parity;
   bool* visited;
   bool* decode;
-  int nnode, num_edges, num_parity, big;
+  int* crr_surf_x;
+  int* crr_surf_y;
+  int nnode, num_edges, num_parity, big, num_crr_x, num_crr_y;
   uint8_t num_nb_max;
 } Graph;
 

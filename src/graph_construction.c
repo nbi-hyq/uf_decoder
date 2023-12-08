@@ -14,8 +14,17 @@ Graph get_2d_toric_code(int lsize){
   int n_qbt = 2*lsize*lsize;
   int n_syndrome = lsize*lsize;
   Graph g = new_graph(n_qbt + n_syndrome, num_nb_max);
+  g.num_crr_x = lsize;
+  g.num_crr_y = lsize;
+  g.crr_surf_x = malloc(g.num_crr_x * sizeof(int));
+  g.crr_surf_y = malloc(g.num_crr_y * sizeof(int));
+  int cnt_crr_x = 0;
+  int cnt_crr_y = 0;
   for(int x=0; x<lsize; x++){
     for(int y=0; y<lsize; y++){
+      /* define correlation surfaces */
+      if(x == 0) g.crr_surf_x[cnt_crr_x++] = 3*(y*lsize+x)+1;
+      if(y == 0) g.crr_surf_y[cnt_crr_y++] = 3*(y*lsize+x)+2;
       /* syndrome node */
       g.nn[3*(y*lsize+x)*num_nb_max] = 3*(y*lsize+x) + 1;
       g.nn[3*(y*lsize+x)*num_nb_max + 1] = 3*(y*lsize+x) + 2;
