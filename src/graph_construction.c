@@ -185,18 +185,32 @@ int visualize_decode(Graph* g, int size){
     for(int x=0; x<size; x++){
       int n = x + y*size;
       printf("o");
-      if(g->error[3*n+1] && !g->decode[3*n+1]) printf("e");
-      else if(!g->error[3*n+1] && g->decode[3*n+1]) printf("c");
-      else if(g->error[3*n+1] && g->decode[3*n+1]) printf("b");
-      else printf("-");
+      if(!g->erasure[3*n+1]){
+        if(g->error[3*n+1] && !g->decode[3*n+1]) printf("e");
+        else if(!g->error[3*n+1] && g->decode[3*n+1]) printf("c");
+        else if(g->error[3*n+1] && g->decode[3*n+1]) printf("b");
+        else printf("-");
+      } else {
+        if(g->error[3*n+1] && !g->decode[3*n+1]) printf("E");
+        else if(!g->error[3*n+1] && g->decode[3*n+1]) printf("C");
+        else if(g->error[3*n+1] && g->decode[3*n+1]) printf("B");
+        else printf("=");
+      }
     }
     printf("\n");
     for(int x=0; x<size; x++){
       int n = x + y*size;
-      if(g->error[3*n+2] && !g->decode[3*n+2]) printf("e");
-      else if(!g->error[3*n+2] && g->decode[3*n+2]) printf("c");
-      else if(g->error[3*n+2] && g->decode[3*n+2]) printf("b");
-      else printf("|");
+      if(!g->erasure[3*n+2]){
+        if(g->error[3*n+2] && !g->decode[3*n+2]) printf("e");
+        else if(!g->error[3*n+2] && g->decode[3*n+2]) printf("c");
+        else if(g->error[3*n+2] && g->decode[3*n+2]) printf("b");
+        else printf("|");
+      } else {
+        if(g->error[3*n+2] && !g->decode[3*n+2]) printf("E");
+        else if(!g->error[3*n+2] && g->decode[3*n+2]) printf("C");
+        else if(g->error[3*n+2] && g->decode[3*n+2]) printf("B");
+        else printf("/");
+      }
       printf(" ");
     }
     printf("\n");

@@ -65,7 +65,10 @@ int get_even_clusters_bfs(Graph* g, int num_syndromes){
   int bfs_next = 0; // next free position in g->bfs_list
   memset(g->visited, 0, g->nnode * sizeof(bool));
   for(int i=0; i < g->nnode; i++){
-    if (g->erasure[i] || g->syndrome[i]) g->bfs_list[bfs_next++] = i; // seed
+    if (g->erasure[i] || g->syndrome[i]){
+      g->bfs_list[bfs_next++] = i; // seed
+      g->visited[i] = true; // mark as visited to avoid adding to bfs_list twice
+    }
     g->ptr[i] = -1; // all isolated nodes in beginning
   }
   g->big = 0; // size of largest connected component
@@ -73,7 +76,6 @@ int get_even_clusters_bfs(Graph* g, int num_syndromes){
   int bfs_pos = 0; // current position for BFS
   while(g->num_parity > 0){
     int n = g->bfs_list[bfs_pos];
-    g->visited[n] = true;
     int r_n = findroot(g, n);
     for(int i=0; i<g->len_nb[n]; i++){
       int nb = g->nn[n*g->num_nb_max + i];
@@ -138,10 +140,14 @@ int peel_forest(Forest* f, Graph* g, bool print){
       int u = (g->nn[l*g->num_nb_max+0] != v ? g->nn[l*g->num_nb_max+0] : g->nn[l*g->num_nb_max+1]); // pendent vertex
       int r = findroot(g, l);
       if(g->syndrome[u] && findroot(g, u) == r){ // flip pendent vertex if it belongs to component
-        g->syndrome[v] = !g->syndrome[v]; // flip
+        if(v >= 0) g->syndrome[v] = !g->syndrome[v]; // flip
         g->syndrome[u] = !g->syndrome[u]; // flip
         g->decode[l] = 1; // decoder output
         if(print) printf("%i \n", l); // print decoder output
+      }
+      if(v < 0){ // v < 0 can happen is l is erased and root
+        num_leaf--;
+        continue;
       }
       bool is_leaf = true;
       for(uint8_t j=0; j<g->len_nb[v]; j++){
@@ -152,10 +158,10 @@ int peel_forest(Forest* f, Graph* g, bool print){
         }
       }
       if(is_leaf) l_leaf[num_leaf-1] = v;
-      else num_leaf--; // one leaf less
+      else num_leaf--;
     } else { // leaf is syndrome/vertex
       int p = f->parent[l];
-      if(p >= 0){ // there is a parent
+      if(p >= 0){ // there is a parent (l is no root)
         if(f->parent[p] >= 0) l_leaf[num_leaf-1] = p; // parent is not a root
         else if(!f->visited[g->nn[p*g->num_nb_max+0]] && !f->visited[g->nn[p*g->num_nb_max+1]]) l_leaf[num_leaf-1] = p; // parent is root but last node in cluster
         else num_leaf--; // don't make root node leaf before it is last node in cluster
