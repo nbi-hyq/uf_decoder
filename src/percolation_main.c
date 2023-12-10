@@ -167,3 +167,19 @@ int peel_forest(Forest* f, Graph* g, bool print){
   return 0;
 }
 
+/* check if the decoding has worked in the sense that no syndromes are left */
+int check_correction(Graph* g){
+  memset(g->syndrome, 0, g->nnode * sizeof(bool));
+  int num_syndromes = 0;
+  for(int i=0; i < g->nnode; i++){
+    if(g->is_qbt[i]){
+      if (g->error[i] ^ g->decode[i]) {
+        num_syndromes += (g->syndrome[g->nn[i*g->num_nb_max]] ? -1 : +1);
+        g->syndrome[g->nn[i*g->num_nb_max]] = (g->syndrome[g->nn[i*g->num_nb_max]] + 1) % 2; // 1st syndrome neighbor
+        num_syndromes += (g->syndrome[g->nn[i*g->num_nb_max+1]] ? -1 : +1);
+        g->syndrome[g->nn[i*g->num_nb_max+1]] = (g->syndrome[g->nn[i*g->num_nb_max+1]] + 1) % 2; // 2nd syndrome neighbor
+      }
+    }
+  }
+  return num_syndromes;
+}
