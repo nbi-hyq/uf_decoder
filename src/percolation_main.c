@@ -65,11 +65,17 @@ int get_even_clusters_bfs(Graph* g, int num_syndromes){
   int bfs_next = 0; // next free position in g->bfs_list
   memset(g->visited, 0, g->nnode * sizeof(bool));
   for(int i=0; i < g->nnode; i++){
-    if (g->erasure[i] || g->syndrome[i]){
+    if (g->erasure[i]){ // erasures 1st (if only erasure errors one is done after BFS over this)
       g->bfs_list[bfs_next++] = i; // seed
       g->visited[i] = true; // mark as visited to avoid adding to bfs_list twice
     }
     g->ptr[i] = -1; // all isolated nodes in beginning
+  }
+  for(int i=0; i < g->nnode; i++){
+    if (g->syndrome[i]){ // syndromes 2nd
+      g->bfs_list[bfs_next++] = i; // seed
+      g->visited[i] = true; // mark as visited to avoid adding to bfs_list twice
+    }
   }
   g->big = 0; // size of largest connected component
   g->num_parity = num_syndromes; // number of unpaired syndromes

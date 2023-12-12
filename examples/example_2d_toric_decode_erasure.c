@@ -18,7 +18,7 @@ int main(){
   for(int lsize=10; lsize<41; lsize+=10){
     Graph g = get_2d_toric_code(lsize);
     for(int e=0; e<num_erasure; e++){
-      float p_erasure = 0.0 + 0.5 * e / num_erasure; // probability of erasure   
+      float p_erasure = 0.0 + 0.8 * e / num_erasure; // probability of erasure
       int cnt_error = 0;
       for(int rep=0; rep<num_rep; rep++){
         int num_syndromes = apply_erasure_and_error(&g, p_erasure, p_err);
