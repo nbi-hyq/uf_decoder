@@ -12,6 +12,7 @@ examples = [
   'example_2d_toric_decode',
   'example_2d_toric_decode_speed',
   'example_2d_toric_decode_and_analyze',
+  'example_2d_toric_decode_erasure',
   'example_2d_toric_triangular',
 ]
 

@@ -10,12 +10,14 @@
 int main(){
   srand(494839);
   int lsize = 10; // size in each dimension
+  int n_rep = 20; // repeat several times
   int num_err = 20;
   int num_erasure = 8;
 
   Graph g = get_2d_toric_code(lsize);
   int r = validate_graph(&g);
 
+  for(int rep=0; rep<n_rep; rep++){
   for(int e=0; e<num_erasure; e++){
     float p_erasure = 0.0 + 0.8 * e / num_erasure; // probability of erasure
     for(int i=0; i<num_err; i++){
@@ -30,6 +32,7 @@ int main(){
       r |= c;
       free_forest(&f);
     }
+  }
   }
 
   free_graph(&g);
