@@ -196,7 +196,7 @@ int check_correction(Graph* g){
   return num_syndromes;
 }
 
-void collect_graph_and_decode(int nnode, int num_syndrome, uint8_t num_nb_max, int* nn, uint8_t* len_nb, bool* syndrome, bool* erasure, bool* decode){
+void collect_graph_and_decode(int nnode, int num_syndrome, uint8_t num_nb_max, int* nn, uint8_t* len_nb, bool* is_qbt, bool* syndrome, bool* erasure, bool* decode){
   Graph g;
   g.ptr = malloc(nnode * sizeof(int)); // several meanings: (if ptr[i]>0: parent index ("pointer"), elif ptr[i]<0: syndrome parity of component, qubits and syndromes
   g.nn = nn; // neighbors of a node (TBD: has a lot of zeros for tanner graph due to different vertex degrees)

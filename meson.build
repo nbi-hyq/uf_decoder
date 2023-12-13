@@ -23,3 +23,5 @@ endforeach
 if get_option('tests') and not meson.is_cross_build()
   subdir('tests')
 endif
+
+lib = library('SpeedDecoder', ['src/percolation_main.c', 'src/graph_type.c', 'src/graph_construction.c'])
