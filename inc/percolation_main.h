@@ -6,5 +6,6 @@ int get_even_clusters_bfs(Graph* g, int num_syndromes);
 Forest get_forest(Graph* g, int num_bfs);
 int peel_forest(Forest* f, Graph* g, bool print);
 int check_correction(Graph* g);
+void collect_graph_and_decode(int nnode, int num_syndrome, uint8_t num_nb_max, int* nn, uint8_t* len_nb, bool* syndrome, bool* erasure, bool* decode);
 
 #endif
