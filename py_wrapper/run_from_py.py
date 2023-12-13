@@ -47,21 +47,29 @@ def toric_code_x_logicals(L):
 
 class TannerGraph:
 	def __init__(self, nnode, num_nb_max):
+    	self.nnode = 0
+		self.nn = None  # adjacency list representation of the Tannder graph
+		self.len_nb = None
+		self.is_qbt = None
+		self.num_nb_max = None  # maximum vertex degree
+		self.syndrome = None
+		self.erasure = None
+		self.decode = None
+
+	def build_2d_surface_code(self, size):
+    	self.nnode = size*size
 		self.nn = np.zeros(nnode*num_nb_max, dtype=np.int32)
 		self.len_nb = np.zeros(nnode, dtype=np.uint8)
 		self.is_qbt = np.zeros(nnode, dtype=np.uint8)
 		self.num_nb_max = num_nb_max  # maximum vertex degree
-		self.nnode = nnode
 		self.syndrome = np.zeros(nnode, dtype=np.uint8)
 		self.erasure = np.zeros(nnode, dtype=np.uint8)
 		self.decode = np.zeros(nnode, dtype=np.uint8)
 
-	def build_2d_surface_code(self):
-		# implement in python
-
 
 # gcc -Wall -g -shared -rdynamic percolation_main.c -o percolation_main.so,  M.ctypes.data_as(ctypes.POINTER(ctypes.c_bool)) C++?
 if __name__ == '__main__':
+    size = 10
     num_nb_max = 4
 	nnode = size*size*3
     g = TannerGraph(nnode, num_nb_max)
