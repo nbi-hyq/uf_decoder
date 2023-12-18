@@ -31,7 +31,6 @@ static int merge_root(Graph* g, int r1, int r2){
     g->ptr[r1] += g->ptr[r2]; // add size of smaller component to bigger one
     g->ptr[r2] = r1; // attach component with root r2 to larger component with root r1
   }
-  if (-g->ptr[r1] > g->big) g->big = -g->ptr[r1]; // update largest component size
   return r1;
 }
 
@@ -62,52 +61,68 @@ int apply_erasure_and_error(Graph* g, float p_erasure, float p_error){
 /* get clusters with even number of syndromes by breadth-first traversal
    num_syndromes: number of syndromes signalling errors */
 int get_even_clusters_bfs(Graph* g, int num_syndromes){
-  int bfs_next = 0; // next free position in g->bfs_list
+  int* bfs_list = malloc(g->nnode * sizeof(int));
+  int* bfs_list_skipped = malloc(g->nnode * sizeof(int));
+  int bfs_next = 0; // next free position in bfs_list
+  int bfs_next_skipped = 0; // next free position in bfs_list_skipped
   memset(g->visited, 0, g->nnode * sizeof(bool));
   for(int i=0; i < g->nnode; i++){
     if (g->erasure[i]){ // erasures 1st (if only erasure errors one is done after BFS over this)
-      g->bfs_list[bfs_next++] = i; // seed
+      bfs_list[bfs_next++] = i; // seed
       g->visited[i] = true; // mark as visited to avoid adding to bfs_list twice
     }
     g->ptr[i] = -1; // all isolated nodes in beginning
   }
+  int num_erasure = bfs_next;
   for(int i=0; i < g->nnode; i++){
     if (g->syndrome[i]){ // syndromes 2nd
-      g->bfs_list[bfs_next++] = i; // seed
+      bfs_list[bfs_next++] = i; // seed
       g->visited[i] = true; // mark as visited to avoid adding to bfs_list twice
     }
   }
-  g->big = 0; // size of largest connected component
   g->num_parity = num_syndromes; // number of unpaired syndromes
   int bfs_pos = 0; // current position for BFS
   while(g->num_parity > 0){
-    int n = g->bfs_list[bfs_pos];
+    if(bfs_pos == bfs_next){ // rare case that a skipped element is still needed
+      free(bfs_list);
+      bfs_list = bfs_list_skipped;
+      bfs_list_skipped = malloc(g->nnode * sizeof(int));
+      bfs_next = bfs_next_skipped;
+      bfs_next_skipped = 0;
+      bfs_pos = 0;
+      num_erasure = 0; // all erasures visited at this point
+    }
+    int n = bfs_list[bfs_pos];
     int r_n = findroot(g, n);
-    for(int i=0; i<g->len_nb[n]; i++){
-      int nb = g->nn[n*g->num_nb_max + i];
-      int r_nb = findroot(g, nb);
-      if(r_n != r_nb) r_n = merge_root(g, r_n, r_nb);
-      if (g->visited[nb] == false) {
-        g->bfs_list[bfs_next++] = nb;
-        g->visited[nb] = true;
+    if(g->parity[r_n] || bfs_pos<num_erasure){ // only grow odd cluster || grow for initial erasure qubits
+      for(int i=0; i<g->len_nb[n]; i++){
+        int nb = g->nn[n*g->num_nb_max + i];
+        int r_nb = findroot(g, nb);
+        if(r_n != r_nb) r_n = merge_root(g, r_n, r_nb); // TBD?: break when parity[r_n] changes?, but that would be half-skipped node
+        if (g->visited[nb] == false) {
+          bfs_list[bfs_next++] = nb;
+          g->visited[nb] = true;
+        }
       }
+    } else {
+      bfs_list_skipped[bfs_next_skipped++] = n; // store the skipped node
     }
     bfs_pos++;
   }
+  free(bfs_list);
+  free(bfs_list_skipped);
   return bfs_next;
 }
 
-/* get forest spaning the erasure/syndrome clusters
-   num_bfs: final number in bfs list in get_even_clusters_bfs (bfs_next) */
-Forest get_forest(Graph* g, int num_bfs){
+/* get forest spaning the erasure/syndrome clusters */
+Forest get_forest(Graph* g){
   Forest f = new_forest(g->nnode);
   memset(f.visited, 0, f.nnode * sizeof(bool)); // can only change from 0->1
   memset(f.leaf, 1, f.nnode * sizeof(bool)); // can only change from 1->0
   for(int i=0; i<f.nnode; i++) f.parent[i] = -1; // -1 indicated tree root
-  int* l_bfs = malloc(num_bfs * sizeof(int)); // another time BFS to build forest
-  for(int i=0; i<num_bfs; i++){
-    int n = g->bfs_list[i];
-    if(!f.visited[n]){ // n is root point of tree
+  int* l_bfs = malloc(g->nnode * sizeof(int)); // another time BFS to build forest
+  for(int n=0; n<g->nnode; n++){
+    if(g->visited[n] && !f.visited[n]){ // n is root point of tree
       int r_n = findroot(g, n);
       int bfs_next = 1; // next free position
       int bfs_pos = 0; // current position for BFS
@@ -214,10 +229,9 @@ void collect_graph_and_decode(int nnode, int num_syndrome, uint8_t num_nb_max, i
   g.crr_surf_x = NULL; // coorelation surafce 1 (for checking logical error)
   g.crr_surf_y = NULL; // coorelation surafce 2 (for checking logical error)
   g.num_parity = 0; // number of unpaired syndromes
-  g.big = 0; // size of largest connected cluster
 
-  int num_bfs = get_even_clusters_bfs(&g, num_syndrome);
-  Forest f = get_forest(&g, num_bfs);
+  get_even_clusters_bfs(&g, num_syndrome);
+  Forest f = get_forest(&g);
   peel_forest(&f, &g, false);
   free_forest(&f);
 

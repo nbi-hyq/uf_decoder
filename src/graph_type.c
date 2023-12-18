@@ -22,7 +22,6 @@ Graph new_graph(int nnode, uint8_t num_nb_max){
   g.crr_surf_x = NULL; // coorelation surafce 1 (for checking logical error)
   g.crr_surf_y = NULL; // coorelation surafce 2 (for checking logical error)
   g.num_parity = 0; // number of unpaired syndromes
-  g.big = 0; // size of largest connected cluster
   return g;
 }
 

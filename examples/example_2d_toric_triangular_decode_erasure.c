@@ -10,13 +10,13 @@
 
 /* simulate square lattice toric code (with erasure) */
 int main(){
-  srand(37577);
+  srand(78923);
   int num_rep = 10000; // number of repetitions for averaging
   int num_erasure = 100; // number of different erasure values
   float p_err = 0.0;
 
   for(int lsize=10; lsize<41; lsize+=10){
-    Graph g = get_2d_toric_code(lsize);
+    Graph g = get_2d_triangular_toric_code(lsize);
     for(int e=0; e<num_erasure; e++){
       float p_erasure = 0.0 + 0.8 * e / num_erasure; // probability of erasure
       int cnt_error = 0;

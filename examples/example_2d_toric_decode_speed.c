@@ -21,8 +21,8 @@ int main(){
     Graph g = get_2d_toric_code(lsize);
     for(int rep=0; rep<100000; rep++){
       int num_syndromes = apply_erasure_and_error(&g, p_erasure, p_err);
-      int num_bfs = get_even_clusters_bfs(&g, num_syndromes);
-      Forest f = get_forest(&g, num_bfs);
+      get_even_clusters_bfs(&g, num_syndromes);
+      Forest f = get_forest(&g);
       peel_forest(&f, &g, false);
       free_forest(&f);
     }

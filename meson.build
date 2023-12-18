@@ -8,12 +8,11 @@ if m_dep.found()
 endif
 
 examples = [
-  'example_2d_toric',
   'example_2d_toric_decode',
   'example_2d_toric_decode_speed',
   'example_2d_toric_decode_and_analyze',
   'example_2d_toric_decode_erasure',
-  'example_2d_toric_triangular',
+  'example_2d_toric_triangular_decode_erasure',
 ]
 
 foreach t : examples
