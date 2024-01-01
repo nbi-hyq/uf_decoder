@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import ctypes
 import numpy as np
+import time
 from scipy.sparse import hstack, kron, eye, csc_matrix, block_diag
 
 
@@ -46,8 +47,9 @@ def toric_code_x_logicals(L):
 
 
 class TannerGraph:
-    def __init__(self, nnode, num_nb_max):
+    def __init__(self):
         self.nnode = 0
+        self.nsyndromes = 0
         self.nn = None  # adjacency list representation of the Tannder graph
         self.len_nb = None
         self.is_qbt = None
@@ -55,36 +57,54 @@ class TannerGraph:
         self.syndrome = None
         self.erasure = None
         self.decode = None
+        self.h = None  # matrix mapping from qubit to syndrome in sparse form
+
+    def h_matrix_to_tanner_graph(self):
+        self.nsyndromes = self.h.shape[0]
+        for i in range(len(self.h.col)):
+            c = self.h.col[i]
+            r = self.h.row[i]
+            self.nn[self.num_nb_max * r] = self.nsyndromes + c  # syndromes come 1st in indexing
+            self.nn[self.num_nb_max * (self.nsyndromes + c)] = r
+            self.len_nb[r] += 1
+            self.len_nb[self.nsyndromes + c] += 1
+        self.is_qbt[self.nsyndromes:] += 1
 
     def build_2d_surface_code(self, size):
-        self.nnode = size * size
-        self.nn = np.zeros(nnode * num_nb_max, dtype=np.int32)
-        self.len_nb = np.zeros(nnode, dtype=np.uint8)
-        self.is_qbt = np.zeros(nnode, dtype=np.uint8)
-        self.num_nb_max = num_nb_max  # maximum vertex degree
-        self.syndrome = np.zeros(nnode, dtype=np.uint8)
-        self.erasure = np.zeros(nnode, dtype=np.uint8)
-        self.decode = np.zeros(nnode, dtype=np.uint8)
-
-        # TBD: implementation of surface code
-
+        self.nnode = size * size * 3
+        self.num_nb_max = 4  # maximum vertex degree
+        self.nn = np.zeros(self.nnode * self.num_nb_max, dtype=np.int32)
+        self.len_nb = np.zeros(self.nnode, dtype=np.uint8)
+        self.is_qbt = np.zeros(self.nnode, dtype=np.uint8)
+        self.syndrome = np.zeros(self.nnode, dtype=np.uint8)
+        self.erasure = np.zeros(self.nnode, dtype=np.uint8)
+        self.decode = np.zeros(self.nnode, dtype=np.uint8)
+        self.h = toric_code_x_stabilisers(size)
+        self.h_matrix_to_tanner_graph()
 
 if __name__ == '__main__':
+    # build H-matrix/Tanner graph
     size = 10
-    num_nb_max = 4
-    nnode = size * size * 3
-    g = TannerGraph(nnode, num_nb_max)
+    g = TannerGraph()
     g.build_2d_surface_code(size)
 
-    # TBD: apply noise and get sydromes
+    # apply noise and get sydromes
+    p_err = 0.01
+    p_erasure = 0.05
+    g.erasure[g.nsyndromes:] = np.random.binomial(np.ones(g.nnode - g.nsyndromes, dtype=int), p_erasure)
+    pauli_err = np.random.binomial(np.ones(g.nnode - g.nsyndromes, dtype=int), p_err)
+    error = np.logical_or(pauli_err, np.logical_and(g.erasure[g.nsyndromes:], np.random.binomial(np.ones(g.nnode - g.nsyndromes, dtype=int), 0.5)))
+    g.syndrome = g.h @ error
 
-    num_syndrome = np.sum(g.syndrome)
-
+    # decode
     lib_graph = ctypes.cdll.LoadLibrary('../build/libSpeedDecoder.so')
-    lib_graph.collect_graph_and_decode(ctypes.c_int(nnode), ctypes.c_int(num_syndrome), ctypes.c_uint8(num_nb_max),
+    t0 = time.time()
+    num_syndrome = np.sum(g.syndrome)
+    lib_graph.collect_graph_and_decode(ctypes.c_int(g.nnode), ctypes.c_int(num_syndrome), ctypes.c_uint8(g.num_nb_max),
                                        ctypes.c_void_p(g.nn.ctypes.data), ctypes.c_void_p(g.len_nb.ctypes.data),
                                        ctypes.c_void_p(g.is_qbt.ctypes.data), ctypes.c_void_p(g.syndrome.ctypes.data),
                                        ctypes.c_void_p(g.erasure.ctypes.data), ctypes.c_void_p(g.decode.ctypes.data))
-
+    t1 = time.time()
+    print('time (s): ', t1 - t0)
     print(g.decode)
     print(g.syndrome)
