@@ -211,7 +211,7 @@ int check_correction(Graph* g){
   return num_syndromes;
 }
 
-void collect_graph_and_decode(int nnode, int num_syndrome, uint8_t num_nb_max, int* nn, uint8_t* len_nb, bool* is_qbt, bool* syndrome, bool* erasure, bool* decode){
+void collect_graph_and_decode(int nnode, uint8_t num_nb_max, int* nn, uint8_t* len_nb, bool* is_qbt, bool* syndrome, bool* erasure, bool* decode){
   Graph g;
   g.ptr = malloc(nnode * sizeof(int)); // several meanings: (if ptr[i]>0: parent index ("pointer"), elif ptr[i]<0: syndrome parity of component, qubits and syndromes
   g.nn = nn; // neighbors of a node (TBD: has a lot of zeros for tanner graph due to different vertex degrees)
@@ -231,6 +231,8 @@ void collect_graph_and_decode(int nnode, int num_syndrome, uint8_t num_nb_max, i
   g.num_parity = 0; // number of unpaired syndromes
   memcpy(g.parity, g.syndrome, g.nnode * sizeof(bool)); // syndrome and parity of cluster starts as the same thing (when all nodes are isolated)
 
+  int num_syndrome = 0;
+  for(int i=0; i<g.nnode; i++) if(syndrome[i]) num_syndrome++; // no check of !is_qbt done here
   get_even_clusters_bfs(&g, num_syndrome);
   Forest f = get_forest(&g);
   peel_forest(&f, &g, false);
