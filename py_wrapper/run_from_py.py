@@ -5,6 +5,7 @@ import numpy as np
 import time
 from scipy.sparse import hstack, kron, eye, csc_matrix, block_diag
 
+# code is partly from: https://pymatching.readthedocs.io/en/stable/toric-code-example.html
 
 def repetition_code(n):
     """
@@ -64,15 +65,15 @@ class TannerGraph:
         for i in range(len(self.h.col)):
             c = self.h.col[i]
             r = self.h.row[i]
-            self.nn[self.num_nb_max * r] = self.nsyndromes + c  # syndromes come 1st in indexing
-            self.nn[self.num_nb_max * (self.nsyndromes + c)] = r
+            self.nn[self.num_nb_max * r + self.len_nb[r]] = self.nsyndromes + c  # syndromes come 1st in indexing
+            self.nn[self.num_nb_max * (self.nsyndromes + c) + self.len_nb[self.nsyndromes + c]] = r
             self.len_nb[r] += 1
             self.len_nb[self.nsyndromes + c] += 1
         self.is_qbt[self.nsyndromes:] += 1
 
     def build_2d_surface_code(self, size):
-        self.nnode = size * size * 3
-        self.num_nb_max = 4  # maximum vertex degree
+        self.nnode = size * size * 3  # size * size syndromes + 2 * size * size qubits
+        self.num_nb_max = 4  # maximum vertex degree per node
         self.nn = np.zeros(self.nnode * self.num_nb_max, dtype=np.int32)
         self.len_nb = np.zeros(self.nnode, dtype=np.uint8)
         self.is_qbt = np.zeros(self.nnode, dtype=np.uint8)
@@ -81,6 +82,28 @@ class TannerGraph:
         self.decode = np.zeros(self.nnode, dtype=np.uint8)
         self.h = toric_code_x_stabilisers(size)
         self.h_matrix_to_tanner_graph()
+
+    def plt_2d_surface_code(self, size, error, decode):
+        for i in range(g.nsyndromes):
+            if g.syndrome[i]:
+                plt.plot([i%size], [np.floor(i/size)], 'or')
+            else:
+                plt.plot([i%size], [np.floor(i/size)], 'ok')
+        for i in range(g.nsyndromes):
+            if error[i] and not decode[i]:
+                plt.plot([i%size], [np.floor(i/size) - 0.5], '.r')
+            elif not error[i] and decode[i]:
+                plt.plot([i%size], [np.floor(i/size) - 0.5], '.m')
+            elif error[i] and decode[i]:
+                plt.plot([i%size], [np.floor(i/size) - 0.5], '.g')
+        for i in range(g.nsyndromes):
+            if error[i+g.nsyndromes] and not decode[i+g.nsyndromes]:
+                plt.plot([i%size + 0.5], [np.floor(i/size)], '.r')
+            elif not error[i+g.nsyndromes] and decode[i+g.nsyndromes]:
+                plt.plot([i%size + 0.5], [np.floor(i/size)], '.m')
+            elif error[i+g.nsyndromes] and decode[i+g.nsyndromes]:
+                plt.plot([i%size + 0.5], [np.floor(i/size)], '.g')
+        plt.show()
 
 if __name__ == '__main__':
     # build H-matrix/Tanner graph
@@ -94,7 +117,8 @@ if __name__ == '__main__':
     g.erasure[g.nsyndromes:] = np.random.binomial(np.ones(g.nnode - g.nsyndromes, dtype=int), p_erasure)
     pauli_err = np.random.binomial(np.ones(g.nnode - g.nsyndromes, dtype=int), p_err)
     error = np.logical_or(pauli_err, np.logical_and(g.erasure[g.nsyndromes:], np.random.binomial(np.ones(g.nnode - g.nsyndromes, dtype=int), 0.5)))
-    g.syndrome = g.h @ error
+    g.syndrome[:g.nsyndromes] = g.h @ error % 2
+    g.plt_2d_surface_code(size, error, g.decode[g.nsyndromes:])
 
     # decode
     lib_graph = ctypes.cdll.LoadLibrary('../build/libSpeedDecoder.so')
@@ -106,5 +130,12 @@ if __name__ == '__main__':
                                        ctypes.c_void_p(g.erasure.ctypes.data), ctypes.c_void_p(g.decode.ctypes.data))
     t1 = time.time()
     print('time (s): ', t1 - t0)
-    print(g.decode)
-    print(g.syndrome)
+
+    # do some checks
+    err_plus_decode = np.logical_xor(error, g.decode[g.nsyndromes:])
+    g.syndrome[:g.nsyndromes] = g.h @ err_plus_decode % 2  # recompute syndrome to check decoding
+    print('syndromes: ', g.syndrome[:g.nsyndromes])
+    print('error+decode: ', err_plus_decode)
+    print('sum syndrome, sum E+C: ', np.sum(g.syndrome[:g.nsyndromes]), np.sum(err_plus_decode))
+    g.plt_2d_surface_code(size, error, g.decode[g.nsyndromes:])
+

@@ -229,6 +229,7 @@ void collect_graph_and_decode(int nnode, int num_syndrome, uint8_t num_nb_max, i
   g.crr_surf_x = NULL; // coorelation surafce 1 (for checking logical error)
   g.crr_surf_y = NULL; // coorelation surafce 2 (for checking logical error)
   g.num_parity = 0; // number of unpaired syndromes
+  memcpy(g.parity, g.syndrome, g.nnode * sizeof(bool)); // syndrome and parity of cluster starts as the same thing (when all nodes are isolated)
 
   get_even_clusters_bfs(&g, num_syndrome);
   Forest f = get_forest(&g);
