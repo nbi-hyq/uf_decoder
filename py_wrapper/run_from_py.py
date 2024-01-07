@@ -3,7 +3,8 @@ import matplotlib.pyplot as plt
 import ctypes
 import numpy as np
 import time
-from scipy.sparse import hstack, kron, eye, csc_matrix, block_diag
+import scipy
+from scipy.sparse import hstack, kron, eye, csc_matrix, block_diag, csr_matrix
 
 
 def repetition_code(n):
@@ -71,13 +72,22 @@ def plt_2d_square_toric_code(size, error, correction, syndrome, nsyndromes):
 
 
 class TannerGraphDecoder:
-    def __init__(self, h):
+    def __init__(self, h):  # h can be coo_matrix, csr_matrix, or dense array
         self.h = h
         self.nsyndromes = self.h.shape[0]
         self.nnode = self.nsyndromes + self.h.shape[1]  # number of syndromes and qubits
-        cnt = np.zeros(self.nsyndromes, dtype=np.uint8)  # count number of qubits per syndrome
-        for i in self.h.row:
-            cnt[i] += 1
+        if type(h) == scipy.sparse._coo.coo_matrix:
+            cnt = np.zeros(self.nsyndromes, dtype=np.uint8)  # count number of qubits per syndrome
+            for i in self.h.row:
+                cnt[i] += 1
+        elif type(h) == scipy.sparse._csr.csr_matrix:
+            cnt = np.zeros(self.nsyndromes, dtype=np.uint8)  # count number of qubits per syndrome
+            for row in self.h.shape[0]:
+                cnt[row] = len(h.getrow(row).indices)
+        elif type(h) == numpy.ndarray:
+            cnt = np.sum(h, axis=1)
+        else:
+            print('invalid parity check matrix')
         self.num_nb_max = max(2, cnt.max())  # maximum vertex degree
         self.nn = np.zeros(self.nnode * self.num_nb_max, dtype=np.int32)
         self.len_nb = np.zeros(self.nnode, dtype=np.uint8)
@@ -87,21 +97,33 @@ class TannerGraphDecoder:
         self.h_matrix_to_tanner_graph()
         self.decode_lib = ctypes.cdll.LoadLibrary('../build/libSpeedDecoder.so')
 
-    def h_matrix_to_tanner_graph(self):  # TBD enable input csr, dense matrix
-        self.nsyndromes = self.h.shape[0]
-        for i in range(len(self.h.col)):
-            c = self.h.col[i]
-            r = self.h.row[i]
-            self.nn[self.num_nb_max * r + self.len_nb[r]] = self.nsyndromes + c  # syndromes come 1st in indexing
-            self.nn[self.num_nb_max * (self.nsyndromes + c) + self.len_nb[self.nsyndromes + c]] = r
-            self.len_nb[r] += 1
-            self.len_nb[self.nsyndromes + c] += 1
-        self.is_qbt[self.nsyndromes:] += 1
+    def add_from_h_row_and_col(self, r, c):
+        self.nn[self.num_nb_max * r + self.len_nb[r]] = self.nsyndromes + c  # syndromes come 1st in indexing
+        self.nn[self.num_nb_max * (self.nsyndromes + c) + self.len_nb[self.nsyndromes + c]] = r
+        self.len_nb[r] += 1
+        self.len_nb[self.nsyndromes + c] += 1
 
-    def decode(self, syndrome):
+    def h_matrix_to_tanner_graph(self):
+        self.is_qbt[self.nsyndromes:] += 1
+        if type(self.h) == scipy.sparse._coo.coo_matrix:
+            for i in range(len(self.h.col)):
+                c = self.h.col[i]
+                r = self.h.row[i]
+                self.add_from_h_row_and_col(r, c)
+        elif type(self.h) == scipy.sparse._csr.csr_matrix:
+            for r in self.h.shape[0]:
+                for c in self.h.getrow(r).indices:
+                    self.add_from_h_row_and_col(r, c)
+        elif type(self.h) == numpy.ndarray:
+            for r in self.h.shape[0]:
+                for c in self.h.shape[1]:
+                    if self.h[r, c]:
+                        self.add_from_h_row_and_col(r, c)
+
+    def decode(self, a_syndrome):
         self.decode_lib.collect_graph_and_decode(ctypes.c_int(self.nnode), ctypes.c_uint8(self.num_nb_max),
                                            ctypes.c_void_p(self.nn.ctypes.data), ctypes.c_void_p(self.len_nb.ctypes.data),
-                                           ctypes.c_void_p(self.is_qbt.ctypes.data), ctypes.c_void_p(syndrome.ctypes.data),
+                                           ctypes.c_void_p(self.is_qbt.ctypes.data), ctypes.c_void_p(a_syndrome.ctypes.data),
                                            ctypes.c_void_p(self.erasure.ctypes.data), ctypes.c_void_p(self.correction.ctypes.data))
 
 
@@ -132,4 +154,3 @@ if __name__ == '__main__':
     syndrome[:g.nsyndromes] = g.h @ err_plus_correction % 2
     print('sum syndrome: ', np.sum(syndrome[:g.nsyndromes]))
     plt_2d_square_toric_code(L, error, g.correction[g.nsyndromes:], syndrome, g.nsyndromes)
-
