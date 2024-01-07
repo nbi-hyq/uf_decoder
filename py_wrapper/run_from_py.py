@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import ctypes
-import numpy as np
 import time
 import scipy
 from scipy.sparse import hstack, kron, eye, csc_matrix, block_diag, csr_matrix
@@ -82,10 +81,10 @@ class TannerGraphDecoder:
                 cnt[i] += 1
         elif type(h) == scipy.sparse._csr.csr_matrix:
             cnt = np.zeros(self.nsyndromes, dtype=np.uint8)  # count number of qubits per syndrome
-            for row in self.h.shape[0]:
+            for row in range(self.h.shape[0]):
                 cnt[row] = len(h.getrow(row).indices)
-        elif type(h) == numpy.ndarray:
-            cnt = np.sum(h, axis=1)
+        elif type(h) == np.ndarray:
+            cnt = np.sum(h, axis=1, dtype=np.uint8)
         else:
             print('invalid parity check matrix')
         self.num_nb_max = max(2, cnt.max())  # maximum vertex degree
@@ -111,12 +110,12 @@ class TannerGraphDecoder:
                 r = self.h.row[i]
                 self.add_from_h_row_and_col(r, c)
         elif type(self.h) == scipy.sparse._csr.csr_matrix:
-            for r in self.h.shape[0]:
+            for r in range(self.h.shape[0]):
                 for c in self.h.getrow(r).indices:
                     self.add_from_h_row_and_col(r, c)
-        elif type(self.h) == numpy.ndarray:
-            for r in self.h.shape[0]:
-                for c in self.h.shape[1]:
+        elif type(self.h) == np.ndarray:
+            for r in range(self.h.shape[0]):
+                for c in range(self.h.shape[1]):
                     if self.h[r, c]:
                         self.add_from_h_row_and_col(r, c)
 
