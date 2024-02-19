@@ -1,0 +1,32 @@
+name: CI
+on:
+  - push
+  - pull_request
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+      - name: Dependencies (shared)
+        run: pip install meson ninja==1.10.2.4
+      - name: Dependencies (ubuntu)
+        if: contains(matrix.os, 'ubuntu')
+        run: sudo apt update && sudo apt install -y valgrind
+      - name: Build
+        working-directory: .
+        run: meson setup build && meson compile -C build
+      - name: Test
+        working-directory: .
+        run: meson test -C build
+      - name: Valgrind
+        if: contains(matrix.os, 'ubuntu')
+        working-directory: .
+        run: meson test -C build --wrap "valgrind --memcheck:leak-check=full --memcheck:show-leak-kinds=definite --memcheck:error-exitcode=1"
+        shell: bash

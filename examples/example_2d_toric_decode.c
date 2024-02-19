@@ -6,7 +6,7 @@
 #include <time.h>
 #include "inc/graph_type.h"
 #include "inc/graph_construction.h"
-#include "inc/percolation_main.h"
+#include "inc/decoder_main.h"
 
 /* simulate square lattice toric code */
 int main(){
@@ -20,8 +20,8 @@ int main(){
     printf("---------- p = %f\n", p_err);
     Graph g = get_2d_toric_code(lsize);
     int num_syndromes = apply_erasure_and_error(&g, p_erasure, p_err);
-    int num_bfs = get_even_clusters_bfs(&g, num_syndromes);
-    Forest f = get_forest(&g, num_bfs);
+    get_even_clusters_bfs_skip(&g, num_syndromes);
+    Forest f = get_forest(&g);
     visualize_error(&g, lsize);
     visualize_forest(&f, lsize);
     peel_forest(&f, &g, true);
