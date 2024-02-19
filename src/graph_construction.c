@@ -6,7 +6,7 @@
 #include <math.h>
 #include "../inc/global.h"
 #include "../inc/graph_type.h"
-#include "../inc/percolation_main.h"
+#include "../inc/decoder_main.h"
 
 /* create half-Tanner-graph for square lattice toric code (lsize: length in one dimension) */
 Graph get_2d_toric_code(int lsize){

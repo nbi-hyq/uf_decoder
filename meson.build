@@ -16,11 +16,11 @@ examples = [
 ]
 
 foreach t : examples
-  example_exe = executable(t, ['examples/' + t + '.c', 'src/percolation_main.c', 'src/graph_type.c', 'src/graph_construction.c'])
+  example_exe = executable(t, ['examples/' + t + '.c', 'src/decoder_main.c', 'src/graph_type.c', 'src/graph_construction.c'])
 endforeach
 
 if get_option('tests') and not meson.is_cross_build()
   subdir('tests')
 endif
 
-lib = library('SpeedDecoder', ['src/percolation_main.c', 'src/graph_type.c', 'src/graph_construction.c'])
+lib = library('SpeedDecoder', ['src/decoder_main.c', 'src/graph_type.c', 'src/graph_construction.c'])

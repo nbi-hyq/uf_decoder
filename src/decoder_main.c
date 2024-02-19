@@ -58,16 +58,55 @@ int apply_erasure_and_error(Graph* g, float p_erasure, float p_error){
   return num_syndromes;
 }
 
-/* get clusters with even number of syndromes by breadth-first traversal
+/* get clusters with even number of syndromes by breadth-first traversal (oversimplified: also even clusters grow)
    num_syndromes: number of syndromes signalling errors */
 int get_even_clusters_bfs(Graph* g, int num_syndromes){
+  int* bfs_list = malloc(g->nnode * sizeof(int));
+  int bfs_next = 0; // next free position in bfs_list
+  memset(g->visited, 0, g->nnode * sizeof(bool));
+  for(int i=0; i < g->nnode; i++){
+    if (g->erasure[i]){ // erasures 1st (if only erasure errors, one is done after BFS over this)
+      bfs_list[bfs_next++] = i; // seed
+      g->visited[i] = true; // mark as visited to avoid adding to bfs_list twice
+    }
+    g->ptr[i] = -1; // all isolated nodes in beginning
+  }
+  for(int i=0; i < g->nnode; i++){
+    if (g->syndrome[i]){ // syndromes 2nd
+      bfs_list[bfs_next++] = i; // seed
+      g->visited[i] = true; // mark as visited to avoid adding to bfs_list twice
+    }
+  }
+  g->num_parity = num_syndromes; // number of unpaired syndromes
+  int bfs_pos = 0; // current position for BFS
+  while(g->num_parity > 0){
+    int n = bfs_list[bfs_pos];
+    int r_n = findroot(g, n);
+    for(int i=0; i<g->len_nb[n]; i++){
+      int nb = g->nn[n*g->num_nb_max + i];
+      int r_nb = findroot(g, nb);
+      if(r_n != r_nb) r_n = merge_root(g, r_n, r_nb); // TBD?: break when parity[r_n] changes?, but that would be half-skipped node
+      if (g->visited[nb] == false) {
+        bfs_list[bfs_next++] = nb;
+        g->visited[nb] = true;
+      }
+    }
+    bfs_pos++;
+  }
+  free(bfs_list);
+  return bfs_next;
+}
+
+/* get clusters with even number of syndromes by breadth-first traversal (skip even clusters)
+   num_syndromes: number of syndromes signalling errors */
+int get_even_clusters_bfs_skip(Graph* g, int num_syndromes){
   int* bfs_list = malloc(g->nnode * sizeof(int));
   int* bfs_list_skipped = malloc(g->nnode * sizeof(int));
   int bfs_next = 0; // next free position in bfs_list
   int bfs_next_skipped = 0; // next free position in bfs_list_skipped
   memset(g->visited, 0, g->nnode * sizeof(bool));
   for(int i=0; i < g->nnode; i++){
-    if (g->erasure[i]){ // erasures 1st (if only erasure errors one is done after BFS over this)
+    if (g->erasure[i]){ // erasures 1st (if only erasure errors, one is done after BFS over this)
       bfs_list[bfs_next++] = i; // seed
       g->visited[i] = true; // mark as visited to avoid adding to bfs_list twice
     }
@@ -233,7 +272,7 @@ void collect_graph_and_decode(int nnode, uint8_t num_nb_max, int* nn, uint8_t* l
 
   int num_syndrome = 0;
   for(int i=0; i<g.nnode; i++) if(syndrome[i]) num_syndrome++; // no check of !is_qbt done here
-  get_even_clusters_bfs(&g, num_syndrome);
+  get_even_clusters_bfs_skip(&g, num_syndrome);
   Forest f = get_forest(&g);
   peel_forest(&f, &g, false);
   free_forest(&f);
