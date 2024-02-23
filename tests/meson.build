@@ -1,6 +1,7 @@
 tests = [
   'toric_2d_square',
   'toric_2d_square_bfs_only',
+  'toric_2d_square_skip_store_root',
   'toric_2d_triangular',
 ]
 

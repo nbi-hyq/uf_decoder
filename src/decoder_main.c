@@ -153,6 +153,100 @@ int get_even_clusters_bfs_skip(Graph* g, int num_syndromes){
   return bfs_next;
 }
 
+/* used for storing skipped nodes in linked list connected to cluster root */
+struct nodeSk {
+  int i_node;
+  struct nodeSk* next;
+};
+typedef struct nodeSk nodeSk;
+
+static void connect_node(nodeSk* node, int i_next){
+  nodeSk* next = malloc(sizeof(nodeSk));
+  node->next = next;
+  next->i_node = i_next;
+  next->next = NULL;
+}
+
+static void free_nodeSk_list(nodeSk* node){
+  while(node->next != NULL){
+    nodeSk* h = node;
+    node = node->next;
+    free(h);
+  }
+  free(node);
+}
+
+/* get clusters with even number of syndromes by breadth-first traversal (skip even clusters, but store skipped nodes with root for later)
+   num_syndromes: number of syndromes signalling errors */
+int get_even_clusters_bfs_skip_store_root(Graph* g, int num_syndromes){
+  nodeSk** a_skipped = malloc(g->nnode * sizeof(nodeSk*));
+  for(int i=0; i<g->nnode; i++) a_skipped[i] = NULL;
+  nodeSk** a_skipped_last = malloc(g->nnode * sizeof(nodeSk*));
+  int* bfs_list = malloc(10*g->nnode * sizeof(int));
+  int bfs_next = 0; // next free position in bfs_list
+  memset(g->visited, 0, g->nnode * sizeof(bool));
+  for(int i=0; i < g->nnode; i++){
+    if (g->erasure[i]){ // erasures 1st (if only erasure errors, one is done after BFS over this)
+      bfs_list[bfs_next++] = i; // seed
+      g->visited[i] = true; // mark as visited to avoid adding to bfs_list twice
+    }
+    g->ptr[i] = -1; // all isolated nodes in beginning
+  }
+  int num_erasure = bfs_next;
+  for(int i=0; i < g->nnode; i++){
+    if (g->syndrome[i]){ // syndromes 2nd
+      bfs_list[bfs_next++] = i; // seed
+      g->visited[i] = true; // mark as visited to avoid adding to bfs_list twice
+    }
+  }
+  g->num_parity = num_syndromes; // number of unpaired syndromes
+  int bfs_pos = 0; // current position for BFS
+  while(g->num_parity > 0){
+    int n = bfs_list[bfs_pos];
+    int r_n = findroot(g, n);
+    if(g->parity[r_n] || bfs_pos<num_erasure){ // only grow odd cluster || grow for initial erasure qubits
+      for(int i=0; i<g->len_nb[n]; i++){
+        int nb = g->nn[n*g->num_nb_max + i];
+        int r_nb = findroot(g, nb);
+
+        /* if r_nb is skipped cluster, recover it */
+        if (a_skipped[r_nb] != NULL){
+          nodeSk* node = a_skipped[r_nb];
+          bfs_list[bfs_next++] = node->i_node;
+          while(node->next != NULL){
+            node = node->next;
+            bfs_list[bfs_next++] = node->i_node;
+          }
+          free_nodeSk_list(a_skipped[r_nb]);
+          a_skipped[r_nb] = NULL;
+        }
+
+        if(r_n != r_nb) r_n = merge_root(g, r_n, r_nb); // TBD?: break when parity[r_n] changes?, but that would be half-skipped node
+        if (g->visited[nb] == false) {
+          bfs_list[bfs_next++] = nb;
+          g->visited[nb] = true;
+        }
+      }
+    } else {
+      if (a_skipped[r_n] == NULL){
+        a_skipped[r_n] = malloc(sizeof(nodeSk));
+        a_skipped[r_n]->i_node = n;
+        a_skipped[r_n]->next = NULL;
+        a_skipped_last[r_n] = a_skipped[r_n];
+      } else {
+        connect_node(a_skipped_last[r_n], n);
+        a_skipped_last[r_n] = a_skipped_last[r_n]->next;
+      }
+    }
+    bfs_pos++;
+  }
+  for(int i=0; i<g->nnode; i++) if (a_skipped[i] != NULL) free_nodeSk_list(a_skipped[i]);
+  free(a_skipped);
+  free(a_skipped_last);
+  free(bfs_list);
+  return bfs_next;
+}
+
 /* get forest spaning the erasure/syndrome clusters */
 Forest get_forest(Graph* g){
   Forest f = new_forest(g->nnode);
@@ -265,8 +359,8 @@ void collect_graph_and_decode(int nnode, uint8_t num_nb_max, int* nn, uint8_t* l
   g.error = NULL; // error (for node type 1)
   g.parity = malloc(nnode * sizeof(bool)); // parity of syndromes in cluster (has meaning only for root node), 0: even number of syndromes
   g.decode = decode; // decoder output
-  g.crr_surf_x = NULL; // coorelation surafce 1 (for checking logical error)
-  g.crr_surf_y = NULL; // coorelation surafce 2 (for checking logical error)
+  g.crr_surf_x = NULL; // correlation surface 1 (for checking logical error)
+  g.crr_surf_y = NULL; // correlation surface 2 (for checking logical error)
   g.num_parity = 0; // number of unpaired syndromes
   memcpy(g.parity, g.syndrome, g.nnode * sizeof(bool)); // syndrome and parity of cluster starts as the same thing (when all nodes are isolated)
 
