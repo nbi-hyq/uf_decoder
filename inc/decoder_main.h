@@ -4,6 +4,7 @@
 int apply_erasure_and_error(Graph* g, float p_erasure, float p_error);
 int get_even_clusters_bfs(Graph* g, int num_syndromes);
 int get_even_clusters_bfs_skip(Graph* g, int num_syndromes);
+int get_even_clusters_bfs_skip_store_root(Graph* g, int num_syndromes);
 Forest get_forest(Graph* g);
 int peel_forest(Forest* f, Graph* g, bool print);
 int check_correction(Graph* g);

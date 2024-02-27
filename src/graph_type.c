@@ -13,7 +13,7 @@ Graph new_graph(int nnode, uint8_t num_nb_max){
   g.num_nb_max = num_nb_max; // maximum number of neighbors per node
   g.nnode = nnode; // number of nodes (qubits + syndromes)
   g.bfs_list = malloc(nnode * sizeof(int));
-  g.visited = malloc(nnode * sizeof(bool)); // node visited (e.g. in BFS)
+  g.visited = malloc(nnode * sizeof(bool)); // node visited (added to bfs_list)
   g.syndrome = malloc(nnode * sizeof(bool)); // syndrome (for node type 0)
   g.erasure = malloc(nnode * sizeof(bool)); // erasure (for node type 1)
   g.error = malloc(nnode * sizeof(bool)); // error (for node type 1)
