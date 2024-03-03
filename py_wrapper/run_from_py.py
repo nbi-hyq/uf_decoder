@@ -125,6 +125,12 @@ class TannerGraphDecoder:
                                            ctypes.c_void_p(self.is_qbt.ctypes.data), ctypes.c_void_p(a_syndrome.ctypes.data),
                                            ctypes.c_void_p(self.erasure.ctypes.data), ctypes.c_void_p(self.correction.ctypes.data))
 
+    def decode_batch(self, a_syndrome, nrep):
+        self.decode_lib.collect_graph_and_decode_batch(ctypes.c_int(self.nnode), ctypes.c_uint8(self.num_nb_max),
+                                           ctypes.c_void_p(self.nn.ctypes.data), ctypes.c_void_p(self.len_nb.ctypes.data),
+                                           ctypes.c_void_p(self.is_qbt.ctypes.data), ctypes.c_void_p(a_syndrome.ctypes.data),
+                                           ctypes.c_void_p(self.erasure.ctypes.data), ctypes.c_void_p(self.correction.ctypes.data), ctypes.c_int(nrep))
+
 
 if __name__ == '__main__':
     # build H-matrix/Tanner graph

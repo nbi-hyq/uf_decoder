@@ -365,6 +365,7 @@ int check_correction(Graph* g){
   return num_syndromes;
 }
 
+/* given graph and syndrome, compute decoding */
 void collect_graph_and_decode(int nnode, uint8_t num_nb_max, int* nn, uint8_t* len_nb, bool* is_qbt, bool* syndrome, bool* erasure, bool* decode){
   Graph g;
   g.ptr = malloc(nnode * sizeof(int)); // several meanings: (if ptr[i]>0: parent index ("pointer"), elif ptr[i]<0: syndrome parity of component, qubits and syndromes
@@ -373,7 +374,6 @@ void collect_graph_and_decode(int nnode, uint8_t num_nb_max, int* nn, uint8_t* l
   g.is_qbt = is_qbt; // 0: syndrome, 1: qubit
   g.num_nb_max = num_nb_max; // maximum number of neighbors per node
   g.nnode = nnode; // number of nodes (qubits + syndromes)
-  g.bfs_list = malloc(nnode * sizeof(int));
   g.visited = malloc(nnode * sizeof(bool)); // node visited (e.g. in BFS)
   g.syndrome = syndrome; // syndrome (for node type 0)
   g.erasure = erasure; // erasure (for node type 1)
@@ -382,7 +382,6 @@ void collect_graph_and_decode(int nnode, uint8_t num_nb_max, int* nn, uint8_t* l
   g.decode = decode; // decoder output
   g.crr_surf_x = NULL; // correlation surface 1 (for checking logical error)
   g.crr_surf_y = NULL; // correlation surface 2 (for checking logical error)
-  g.num_parity = 0; // number of unpaired syndromes
   memcpy(g.parity, g.syndrome, g.nnode * sizeof(bool)); // syndrome and parity of cluster starts as the same thing (when all nodes are isolated)
 
   int num_syndrome = 0;
@@ -393,7 +392,40 @@ void collect_graph_and_decode(int nnode, uint8_t num_nb_max, int* nn, uint8_t* l
   free_forest(&f);
 
   free(g.ptr);
-  free(g.bfs_list);
   free(g.visited);
   free(g.parity);
 }
+
+/* given graph and syndrome, compute decoding in batches of nrep repetitions */
+void collect_graph_and_decode_batch(int nnode, uint8_t num_nb_max, int* nn, uint8_t* len_nb, bool* is_qbt, bool* syndrome, bool* erasure, bool* decode, int nrep){
+  Graph g;
+  g.ptr = malloc(nnode * sizeof(int)); // several meanings: (if ptr[i]>0: parent index ("pointer"), elif ptr[i]<0: syndrome parity of component, qubits and syndromes
+  g.nn = nn; // neighbors of a node (TBD: has a lot of zeros for tanner graph due to different vertex degrees)
+  g.len_nb = len_nb; // until which index there are neighbors (255 neighbors max)
+  g.is_qbt = is_qbt; // 0: syndrome, 1: qubit
+  g.num_nb_max = num_nb_max; // maximum number of neighbors per node
+  g.nnode = nnode; // number of nodes (qubits + syndromes)
+  g.visited = malloc(nnode * sizeof(bool)); // node visited (e.g. in BFS)
+  g.erasure = erasure; // erasure (for node type 1)
+  g.error = NULL; // error (for node type 1)
+  g.parity = malloc(nnode * sizeof(bool)); // parity of syndromes in cluster (has meaning only for root node), 0: even number of syndromes
+  g.crr_surf_x = NULL; // correlation surface 1 (for checking logical error)
+  g.crr_surf_y = NULL; // correlation surface 2 (for checking logical error)
+
+  for(int r=0; r<nrep; r++){
+    g.syndrome = syndrome + r*g.nnode; // syndrome (for node type 0)
+    g.decode = decode + r*g.nnode; // decoder output
+    memcpy(g.parity, g.syndrome, g.nnode * sizeof(bool)); // syndrome and parity of cluster starts as the same thing (when all nodes are isolated)
+    int num_syndrome = 0;
+    for(int i=0; i<g.nnode; i++) if(g.syndrome[i]) num_syndrome++; // no check of !is_qbt done here
+    get_even_clusters_bfs_skip_store_root(&g, num_syndrome);
+    Forest f = get_forest(&g);
+    peel_forest(&f, &g, false);
+    free_forest(&f);
+  }
+
+  free(g.ptr);
+  free(g.visited);
+  free(g.parity);
+}
+

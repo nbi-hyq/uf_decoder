@@ -11,12 +11,36 @@ from run_from_py import toric_code_x_logicals, toric_code_x_stabilisers, TannerG
 from scipy.sparse import csr_matrix
 
 
+# call library only once for block of many repetitions
+def num_decoding_failures_batch(DecoderClass, H, logicals, p, num_trials):
+    decoder = DecoderClass(H)
+    decoder.correction = np.zeros(decoder.nnode * num_trials, dtype=np.uint8)
+    syndrome = np.zeros(decoder.nnode * num_trials, dtype=np.uint8)
+    l_noise = []
+    for i in range(num_trials):
+        l_noise.append(np.random.binomial(1, p, H.shape[1]))
+        syndrome[i*decoder.nnode:i*decoder.nnode+decoder.nsyndromes] = H @ l_noise[i] % 2
+
+    start_time = time.perf_counter()
+    decoder.decode_batch(syndrome, num_trials)
+    end_time = time.perf_counter()
+    total_time = end_time - start_time
+
+    num_errors = 0
+    for i in range(num_trials):
+        error = (l_noise[i] + decoder.correction[i*decoder.nnode+decoder.nsyndromes:(i+1)*decoder.nnode]) % 2
+        if np.any(error @ logicals.T % 2):
+            num_errors += 1
+    return total_time, num_errors
+
+
+# call library for every repetition
 def num_decoding_failures(DecoderClass, H, logicals, p, num_trials):
     decoder = DecoderClass(H)
     num_errors = 0
     total_time = 0.0
     for i in range(num_trials):
-        noise = np.random.binomial(1, p, 2 * L * L)
+        noise = np.random.binomial(1, p, H.shape[1])
         syndrome = H @ noise % 2
 
         start_time = time.perf_counter()
@@ -30,12 +54,13 @@ def num_decoding_failures(DecoderClass, H, logicals, p, num_trials):
     return total_time, num_errors
 
 
+# call library for every repetition
 def num_decoding_failures_b(DecoderClass, H, logicals, p, num_trials):
     decoder = DecoderClass(H)
     num_errors = 0
     total_time = 0.0
     for i in range(num_trials):
-        noise = np.random.binomial(1, p, 2 * L * L)
+        noise = np.random.binomial(1, p, H.shape[1])
         syndrome = np.zeros(decoder.nnode, dtype=np.uint8)
         syndrome[:decoder.nsyndromes] = H @ noise % 2
 
@@ -54,11 +79,12 @@ if __name__ == "__main__":
     l_col1 = ['-r', '-g', '-b']
     l_col2 = [':r', ':g', ':b']
     l_decoder = ['uf2', 'matching', 'uf']
+    batch_evaluate = True  # do error sampling in C-progrm and do all repetitions of same parameter in one block (only used for uf2-decoder)
 
     # speed scaling with size
     num_trials = 3000
     l_L = [10*(i+1) for i in range(14)]
-    l_p = [0.02, 0.04, 0.06]
+    l_p = [0.02, 0.04, 0.06, 0.08]
     fig1, ax1 = plt.subplots()
     a_time = np.zeros((len(l_decoder), len(l_L), len(l_p)), dtype=np.double)
     for i_dec, dec in enumerate(l_decoder):
@@ -75,7 +101,10 @@ if __name__ == "__main__":
             logX = toric_code_x_logicals(L)
             for i_p, p in enumerate(l_p):
                 if dec == 'uf2':
-                    total_time, num_errors = num_decoding_failures_b(DecoderClass, Hx, logX, p, num_trials)
+                    if batch_evaluate:
+                        total_time, num_errors = num_decoding_failures_batch(DecoderClass, Hx, logX, p, num_trials)
+                    else:
+                        total_time, num_errors = num_decoding_failures_b(DecoderClass, Hx, logX, p, num_trials)
                 elif dec == 'matching':
                     total_time, num_errors = num_decoding_failures(DecoderClass, Hx, logX, p, num_trials)
                 elif dec == 'uf':  # https://github.com/chaeyeunpark/UnionFind needs csr_matrix
@@ -90,7 +119,7 @@ if __name__ == "__main__":
 
     # comparison of threhsold and speed (different sizes, different error rates)
     num_trials = 5000
-    l_L = [10, 20, 40, 80]
+    l_L = [10, 20, 30, 40]
     l_p = [0.006*i for i in range(20)]
     fig1, ax1 = plt.subplots()
     ax2 = ax1.twinx()
@@ -110,7 +139,10 @@ if __name__ == "__main__":
             l_error = []
             for p in l_p:
                 if dec == 'uf2':
-                    total_time, num_errors = num_decoding_failures_b(DecoderClass, Hx, logX, p, num_trials)
+                    if batch_evaluate:
+                        total_time, num_errors = num_decoding_failures_batch(DecoderClass, Hx, logX, p, num_trials)
+                    else:
+                        total_time, num_errors = num_decoding_failures_b(DecoderClass, Hx, logX, p, num_trials)
                 elif dec == 'matching':
                     total_time, num_errors = num_decoding_failures(DecoderClass, Hx, logX, p, num_trials)
                 elif dec == 'uf':  # https://github.com/chaeyeunpark/UnionFind needs csr_matrix

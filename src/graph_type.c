@@ -12,7 +12,6 @@ Graph new_graph(int nnode, uint8_t num_nb_max){
   g.is_qbt = malloc(nnode * sizeof(bool)); // 0: syndrome, 1: qubit
   g.num_nb_max = num_nb_max; // maximum number of neighbors per node
   g.nnode = nnode; // number of nodes (qubits + syndromes)
-  g.bfs_list = malloc(nnode * sizeof(int));
   g.visited = malloc(nnode * sizeof(bool)); // node visited (added to bfs_list)
   g.syndrome = malloc(nnode * sizeof(bool)); // syndrome (for node type 0)
   g.erasure = malloc(nnode * sizeof(bool)); // erasure (for node type 1)
@@ -46,7 +45,6 @@ void free_graph(Graph* g){
   free(g->parity);
   free(g->decode);
   free(g->visited);
-  free(g->bfs_list);
   free(g->crr_surf_x);
   free(g->crr_surf_y);
 }
