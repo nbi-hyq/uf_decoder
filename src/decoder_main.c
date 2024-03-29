@@ -414,7 +414,7 @@ void collect_graph_and_decode_batch(int nnode, uint8_t num_nb_max, int* nn, uint
   for(int r=0; r<nrep; r++){
     g.syndrome = syndrome + r*g.nnode; // syndrome (for node type 0)
     g.decode = decode + r*g.nnode; // decoder output
-    g.erasure = erasure r*g.nnode;
+    g.erasure = erasure + r*g.nnode;
     memcpy(g.parity, g.syndrome, g.nnode * sizeof(bool)); // syndrome and parity of cluster starts as the same thing (when all nodes are isolated)
     int num_syndrome = 0;
     for(int i=0; i<g.nnode; i++) if(g.syndrome[i]) num_syndrome++; // no check of !is_qbt done here
