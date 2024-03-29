@@ -70,7 +70,7 @@ def plt_2d_square_toric_code(size, error, correction, syndrome, nsyndromes):
     plt.show()
 
 
-class TannerGraphDecoder:
+class UFDecoder:
     def __init__(self, h):  # h can be coo_matrix, csr_matrix, or dense array
         self.h = h
         self.nsyndromes = self.h.shape[0]
@@ -91,7 +91,6 @@ class TannerGraphDecoder:
         self.nn = np.zeros(self.nnode * self.num_nb_max, dtype=np.int32)
         self.len_nb = np.zeros(self.nnode, dtype=np.uint8)
         self.is_qbt = np.zeros(self.nnode, dtype=np.uint8)
-        self.erasure = np.zeros(self.nnode, dtype=np.uint8)
         self.correction = np.zeros(self.nnode, dtype=np.uint8)
         self.h_matrix_to_tanner_graph()
         self.decode_lib = ctypes.cdll.LoadLibrary('../build/libSpeedDecoder.so')
@@ -119,38 +118,39 @@ class TannerGraphDecoder:
                     if self.h[r, c]:
                         self.add_from_h_row_and_col(r, c)
 
-    def decode(self, a_syndrome):
+    def decode(self, a_syndrome, a_erasure):
         self.decode_lib.collect_graph_and_decode(ctypes.c_int(self.nnode), ctypes.c_uint8(self.num_nb_max),
                                            ctypes.c_void_p(self.nn.ctypes.data), ctypes.c_void_p(self.len_nb.ctypes.data),
                                            ctypes.c_void_p(self.is_qbt.ctypes.data), ctypes.c_void_p(a_syndrome.ctypes.data),
-                                           ctypes.c_void_p(self.erasure.ctypes.data), ctypes.c_void_p(self.correction.ctypes.data))
+                                           ctypes.c_void_p(a_erasure.ctypes.data), ctypes.c_void_p(self.correction.ctypes.data))
 
-    def decode_batch(self, a_syndrome, nrep):
+    def decode_batch(self, a_syndrome, a_erasure, nrep):
         self.decode_lib.collect_graph_and_decode_batch(ctypes.c_int(self.nnode), ctypes.c_uint8(self.num_nb_max),
                                            ctypes.c_void_p(self.nn.ctypes.data), ctypes.c_void_p(self.len_nb.ctypes.data),
                                            ctypes.c_void_p(self.is_qbt.ctypes.data), ctypes.c_void_p(a_syndrome.ctypes.data),
-                                           ctypes.c_void_p(self.erasure.ctypes.data), ctypes.c_void_p(self.correction.ctypes.data), ctypes.c_int(nrep))
+                                           ctypes.c_void_p(a_erasure.ctypes.data), ctypes.c_void_p(self.correction.ctypes.data), ctypes.c_int(nrep))
 
 
 if __name__ == '__main__':
     # build H-matrix/Tanner graph
     L = 40
     H = toric_code_x_stabilisers(L)
-    g = TannerGraphDecoder(H)
+    g = UFDecoder(H)
 
     # apply noise and get sydromes
     p_err = 0.05
     p_erasure = 0.10
-    g.erasure[g.nsyndromes:] = np.random.binomial(np.ones(g.nnode - g.nsyndromes, dtype=int), p_erasure)
-    pauli_err = np.random.binomial(np.ones(g.nnode - g.nsyndromes, dtype=int), p_err)
-    error = np.logical_or(pauli_err, np.logical_and(g.erasure[g.nsyndromes:], np.random.binomial(np.ones(g.nnode - g.nsyndromes, dtype=int), 0.5)))
+    erasure = np.zeros(g.nnode, dtype=np.uint8)
+    erasure[g.nsyndromes:] = np.random.binomial(1, p_erasure, g.nnode - g.nsyndromes)
+    pauli_err = np.random.binomial(1, p_err, g.nnode - g.nsyndromes)
+    error = np.logical_or(pauli_err, np.logical_and(erasure[g.nsyndromes:], np.random.binomial(1, 0.5, g.nnode - g.nsyndromes)))
     syndrome = np.zeros(g.nnode, dtype=np.uint8)
     syndrome[:g.nsyndromes] = g.h @ error % 2
     plt_2d_square_toric_code(L, error, g.correction[g.nsyndromes:], syndrome, g.nsyndromes)
 
     # decode
     t0 = time.perf_counter()
-    g.decode(syndrome)
+    g.decode(syndrome, erasure)
     t1 = time.perf_counter()
     print('time (s): ', t1 - t0)
 
