@@ -95,9 +95,10 @@ if __name__ == "__main__":
                     total_time, num_errors = num_decoding_failures_others(decoder, csr_matrix(Hx), logX, p, num_trials)
                 a_time[i_dec, i_L, i_p] = total_time / num_trials
         for i_p, _ in enumerate(l_p):
-            ax1.loglog(np.array(l_L)**2, a_time[i_dec, :, i_p], l_col1[i_dec])
-    ax1.loglog(np.array([l_L[0]**2, l_L[-1]**2]), 10**-7 * np.array([l_L[0]**2, l_L[-1]**2]), '--k')  # linear reference
-    ax1.set_xlabel('size')
+            ax1.loglog(2*np.array(l_L)**2, a_time[i_dec, :, i_p], l_col1[i_dec])
+    ax1.loglog(np.array([2*l_L[0]**2, 2*l_L[-1]**2]), 3*10**-8 * np.array([l_L[0]**2, l_L[-1]**2]), '--k')  # linear reference
+    ax1.loglog(np.array([2*l_L[0]**2, 5000, 2*l_L[-1]**2]), np.array([4.4*10**-4*2*l_L[0]**2/5000, 4.4*10**-4, 4.4*10**-4*2*l_L[-1]**2/5000]), '--b')  # linear reference arxiv1709.06218 (p=0.01)
+    ax1.set_xlabel('number of qubits (2L^2)')
     ax1.set_ylabel('time')
     plt.savefig('time_scaling.pdf')
 

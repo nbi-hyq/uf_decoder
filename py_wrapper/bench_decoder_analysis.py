@@ -59,6 +59,7 @@ def num_decoding_failures(decoder, logicals, p_err, p_erase, num_rep):
 
 if __name__ == "__main__":
     batch_evaluate = True  # do all repetitions of same parameter in one block
+    plt.rcParams.update({'font.size': 8})
 
     # speed scaling with size
     num_trials = 3000
@@ -73,15 +74,17 @@ if __name__ == "__main__":
         decoder = UFDecoder(Hx)
         for i_p, p in enumerate(l_p):
             if batch_evaluate:
-                total_time, num_errors = num_decoding_failures_batch(decoder, logX, p, 0.0, num_trials)
+                total_time, _ = num_decoding_failures_batch(decoder, logX, p, 0.0, num_trials)
             else:
-                total_time, num_errors = num_decoding_failures(decoder, logX, p, 0.0, num_trials)
+                total_time, _ = num_decoding_failures(decoder, logX, p, 0.0, num_trials)
             a_time[i_L, i_p] = total_time / num_trials
     for i_p, _ in enumerate(l_p):
-        ax1.loglog(np.array(l_L)**2, a_time[:, i_p])
-    ax1.loglog(np.array([l_L[0]**2, l_L[-1]**2]), 10**-7 * np.array([l_L[0]**2, l_L[-1]**2]), '--k')  # linear reference
-    ax1.set_xlabel('size')
+        ax1.loglog(2*np.array(l_L)**2, a_time[:, i_p])
+    ax1.loglog(np.array([2*l_L[0]**2, 2*l_L[-1]**2]), 3*10**-8 * np.array([l_L[0]**2, l_L[-1]**2]), '--k')  # linear reference
+    ax1.loglog(np.array([2*l_L[0]**2, 5000, 2*l_L[-1]**2]), np.array([4.4*10**-4*2*l_L[0]**2/5000, 4.4*10**-4, 4.4*10**-4*2*l_L[-1]**2/5000]), '--b')  # linear reference arxiv1709.06218 (p=0.01)
+    ax1.set_xlabel('number of qubits (2L^2)')
     ax1.set_ylabel('time')
+    fig1.set_size_inches(3.4, 2.0)
     plt.savefig('time_scaling.pdf')
     np.savetxt('time.txt', a_time)
 
@@ -91,8 +94,8 @@ if __name__ == "__main__":
     l_p = [0.006*i for i in range(20)]  # probability of Pauli error
     fig1, ax1 = plt.subplots()
     ax2 = ax1.twinx()
-    a_time_2 = np.zeros((len(l_L), len(l_p)), dtype=np.double)
-    a_error_2 = np.zeros((len(l_L), len(l_p)), dtype=np.double)
+    a_time = np.zeros((len(l_L), len(l_p)), dtype=np.double)
+    a_error = np.zeros((len(l_L), len(l_p)), dtype=np.double)
     for i_L, L in enumerate(l_L):
         print(L)
         Hx = toric_code_x_stabilisers(L)
@@ -103,14 +106,54 @@ if __name__ == "__main__":
                 total_time, num_errors = num_decoding_failures_batch(decoder, logX, p, 0.0, num_trials)
             else:
                 total_time, num_errors = num_decoding_failures(decoder, logX, p, 0.0, num_trials)
-            a_error_2[i_L, i_p] = num_errors / num_trials
-            a_time_2[i_L, i_p] = total_time / num_trials
-        ax1.semilogy(l_p, a_error_2[i_L, :])
-        ax2.semilogy(l_p, a_time_2[i_L, :], linestyle='dashed')
+            a_error[i_L, i_p] = num_errors / num_trials
+            a_time[i_L, i_p] = total_time / num_trials
+        ax1.semilogy(l_p, a_error[i_L, :])
+        ax2.semilogy(l_p, a_time[i_L, :], linestyle='dashed')
     ax1.set_xlabel('physical error rate')
     ax1.set_ylabel('logical error rate')
     ax2.set_ylabel('time (s)')
+    fig1.set_size_inches(3.4, 2.8)
     plt.savefig('error_and_time.pdf')
-    np.savetxt('time2.txt', a_time_2)
-    np.savetxt('error2.txt', a_error_2)
+    np.savetxt('time2.txt', a_time)
+    np.savetxt('error2.txt', a_error)
+
+    # threshold as a function of Pauli errors and erasures
+    num_trials = 5000
+    l_L = [30, 60]
+    l_p = [0.003*i for i in range(40)]  # probability of Pauli error
+    l_ers = [0.05*i for i in range(10)]  # probability of erasure
+    a_error = np.zeros((len(l_L), len(l_p), len(l_ers)), dtype=np.double)
+    for i_L, L in enumerate(l_L):
+        print(L)
+        Hx = toric_code_x_stabilisers(L)
+        logX = toric_code_x_logicals(L)
+        decoder = UFDecoder(Hx)
+        for i_p, p in enumerate(l_p):
+            for i_e, e in enumerate(l_ers):
+                if batch_evaluate:
+                    total_time, num_errors = num_decoding_failures_batch(decoder, logX, p, e, num_trials)
+                else:
+                    total_time, num_errors = num_decoding_failures(decoder, logX, p, e, num_trials)
+                a_error[i_L, i_p, i_e] = num_errors / num_trials
+    l_threshold = []
+    for i_e, e in enumerate(l_ers):
+        i_thresh = np.argmax(a_error[0, :, i_e] < a_error[1, :, i_e])
+        l_threshold.append(l_p[i_thresh])
+        fig1, ax1 = plt.subplots()
+        for i_L, _ in enumerate(l_L):
+            ax1.semilogy(l_p, np.squeeze(a_error[i_L, :, i_e]))
+        ax1.set_xlabel('physical error rate')
+        ax1.set_ylabel('logical error rate')
+        ax1.set_title('erasure: ' + str(e))
+        plt.savefig('error_erasure' + str(i_e) + '.pdf')
+        np.savetxt('error_erasure' + str(i_e) + '.txt', np.squeeze(a_error[:, :, i_e]))
+    fig1, ax1 = plt.subplots()
+    ax1.plot(l_ers, l_threshold)
+    ax1.set_xlabel('erasure rate')
+    ax1.set_ylabel('Pauli error rate')
+    ax1.set(xlim=(0, 0.5), ylim=(0, 0.1))
+    fig1.set_size_inches(3.4, 2.0)
+    plt.savefig('error_vs_erasure.pdf')
+    np.savetxt('error_vs_erasure.txt', l_threshold)
 
