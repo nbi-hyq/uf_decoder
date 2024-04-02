@@ -4,7 +4,6 @@
 typedef struct {
   int* ptr;
   int* nn;
-  int* bfs_list;
   uint8_t* len_nb;
   bool* is_qbt;
   bool* syndrome;
