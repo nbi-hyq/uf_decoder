@@ -8,11 +8,11 @@
 #include "../inc/decoder_main.h"
 
 int main(){
-  srand(494839);
+  srand(7383434);
   int lsize = 10; // size in each dimension
   int n_rep = 20; // repeat several times
   int num_err = 20;
-  int num_erasure = 8;
+  int num_erasure = 16;
 
   Graph g = get_2d_toric_code(lsize);
   int r = validate_graph(&g);
@@ -23,7 +23,7 @@ int main(){
     for(int i=0; i<num_err; i++){
       float p_err = 0.0 + 0.2 * i / num_err;
       int num_syndromes = apply_erasure_and_error(&g, p_erasure, p_err);
-      get_even_clusters_bfs_skip_store_root(&g, num_syndromes);
+      get_even_clusters_bfs_skip(&g, num_syndromes);
       Forest f = get_forest(&g);
       peel_forest(&f, &g, false);
       visualize_decode(&g, lsize);
