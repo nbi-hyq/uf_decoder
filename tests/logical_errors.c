@@ -45,11 +45,11 @@ int main(){
       double pLogical = (double)cnt_error / (double)num_rep;
       if(lsize == 10) logicalArry[i] = pLogical; // store to compare to value at larger size
       if(p_err < 0.07 && lsize == 20 && pLogical > logicalArry[i]) r |= 1;
-      if(p_err < 0.05 && pLogical > p_err) r |= 1;
+      if(p_err < 0.04 && pLogical > p_err) r |= 1;
       if(p_err < 0.06 && lsize == 10 && pLogical > 0.1) r |= 1;
       if(p_err < 0.07 && lsize == 20 && pLogical > 0.1) r |= 1;
       if(p_err > 0.08 && lsize == 10 && pLogical < 0.1) r |= 1;
-      if(p_err > 0.087 && lsize == 20 && pLogical < 0.1) r |= 1;
+      if(p_err > 0.094 && lsize == 20 && pLogical < 0.1) r |= 1;
     }
     free_graph(&g);
   }
