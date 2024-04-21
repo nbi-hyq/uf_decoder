@@ -5,6 +5,7 @@ tests = [
   'toric_2d_triangular_alg1',
   'toric_2d_triangular_alg2',
   'toric_2d_triangular_alg3',
+  'logical_errors',
 ]
 
 foreach t : tests
