@@ -58,7 +58,7 @@ int apply_erasure_and_error(Graph* g, float p_erasure, float p_error){
   return num_syndromes;
 }
 
-/* get clusters with even number of syndromes by breadth-first traversal (oversimplified: also even clusters grow)
+/* algorithm 1: get clusters with even number of syndromes by breadth-first traversal (oversimplified: also even clusters grow)
    num_syndromes: number of syndromes signalling errors */
 int get_even_clusters_bfs(Graph* g, int num_syndromes){
   int* bfs_list = malloc(g->nnode * sizeof(int));
@@ -97,7 +97,7 @@ int get_even_clusters_bfs(Graph* g, int num_syndromes){
   return bfs_next;
 }
 
-/* get clusters with even number of syndromes by breadth-first traversal (skip even clusters)
+/* algorithm 2: get clusters with even number of syndromes by breadth-first traversal (skip even clusters)
    num_syndromes: number of syndromes signalling errors */
 int get_even_clusters_bfs_skip(Graph* g, int num_syndromes){
   int* bfs_list = malloc(g->nnode * sizeof(int));
@@ -176,7 +176,7 @@ static void free_nodeSk_list(nodeSk* node){
   free(node);
 }
 
-/* get clusters with even number of syndromes by breadth-first traversal (skip even clusters, but store skipped nodes with root for later)
+/* algorithm 3: get clusters with even number of syndromes by breadth-first traversal (skip even clusters, but store skipped nodes with root for later)
    num_syndromes: number of syndromes signalling errors */
 int get_even_clusters_bfs_skip_store_root(Graph* g, int num_syndromes){
   nodeSk** a_skipped = malloc(g->nnode * sizeof(nodeSk*));

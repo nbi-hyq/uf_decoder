@@ -8,13 +8,13 @@
 #include "../inc/decoder_main.h"
 
 int main(){
-  srand(494839);
+  srand(892373);
   int lsize = 10; // size in each dimension
   int n_rep = 20; // repeat several times
   int num_err = 20;
-  int num_erasure = 8;
+  int num_erasure = 16;
 
-  Graph g = get_2d_toric_code(lsize);
+  Graph g = get_2d_triangular_toric_code(lsize);
   int r = validate_graph(&g);
 
   for(int rep=0; rep<n_rep; rep++){

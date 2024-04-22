@@ -1,8 +1,11 @@
 tests = [
-  'toric_2d_square',
-  'toric_2d_square_bfs_only',
-  'toric_2d_square_skip_store_root',
-  'toric_2d_triangular',
+  'toric_2d_square_alg1',
+  'toric_2d_square_alg2',
+  'toric_2d_square_alg3',
+  'toric_2d_triangular_alg1',
+  'toric_2d_triangular_alg2',
+  'toric_2d_triangular_alg3',
+  'logical_errors',
 ]
 
 foreach t : tests
