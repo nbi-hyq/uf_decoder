@@ -115,10 +115,7 @@ bool ldpc_decode_cluster(Graph* g, int root){
   }
 
   /* decode the cluster if possible by Gaussian elimination */
-  //printf("%i %i\n", n_row, n_col);
-  //print_bitwise_matrix(w.mat, n_row, n_col);
   GaussElimin_bit(w.mat, n_row, n_col, n_col);
-  //print_bitwise_matrix(w.mat, n_row, n_col);
   bool* decode = malloc(g->num_qbt[root]); // store decoding at local indices
   memset(decode, 0, g->num_qbt[root]);
   bool decodable = true;
@@ -144,28 +141,8 @@ bool ldpc_decode_cluster(Graph* g, int root){
   free(lBf);
   free(globalToMat);
   free(visited);
-  //if(!decodable)printf("decodebale %i\n", decodable);
-  //else {for(int i=0; i<g->num_qbt[root]; i++) printf("%i", decode[i]);}
-  //printf("\n");
   free(decode);
   return decodable;
-}
-
-/* merge two graph fragments in g->ptr representation, return new root node index, do not update validity of merged cluster */
-static int merge_root_plain(Graph* g, int r1, int r2){
-  if (g->parity[r1] ^ g->parity[r2]) g->num_parity -= 1; // assume that the merged cluster is valid, if it is invalid +1 will be done later
-  else if (g->parity[r1] && g->parity[r2]) g->num_parity -= 2; // assume that the merged cluster is valid, if it is invalid +1 will be done later
-  if (g->ptr[r1] > g->ptr[r2]){
-    g->num_qbt[r2] += g->num_qbt[r1]; // add number of data qubits in smaller cluster to bigger cluster
-    g->ptr[r2] += g->ptr[r1]; // add size of smaller component to bigger one
-    g->ptr[r1] = r2; // attach component with root r1 to larger component with root r2
-    r1 = r2; // update root
-  } else {
-    g->num_qbt[r1] += g->num_qbt[r2]; // add number of data qubits in smaller cluster to bigger cluster
-    g->ptr[r1] += g->ptr[r2]; // add size of smaller component to bigger one
-    g->ptr[r2] = r1; // attach component with root r2 to larger component with root r1
-  }
-  return r1;
 }
 
 /* merge two graph fragments in g->ptr representation, return new root node index, update validity of merged cluster */
@@ -244,7 +221,7 @@ void ldpc_syndrome_validation_and_decode(Graph* g, int num_syndromes){
     for(uint8_t i=0; i<g->len_nb[n]; i++){
       int nb = g->nn[n*g->num_nb_max + i];
       int r_nb = findroot(g, nb);
-      if(r_n != r_nb) r_n = merge_root_plain(g, r_n, r_nb);
+      if(r_n != r_nb) r_n = merge_root(g, r_n, r_nb);
       if (g->visited[nb] == false) {
         bf_list[bf_next++] = nb;
         g->visited[nb] = true;
@@ -252,17 +229,6 @@ void ldpc_syndrome_validation_and_decode(Graph* g, int num_syndromes){
     }
     bf_pos++;
   }
-  /* decode/validate the clusters grown by just going to the 1-neighborhood of the erasures */
-  bool* evaluated = malloc(num_erasure);
-  memset(evaluated, 0, num_erasure);
-  for(int pos = 0; pos < num_erasure; pos++){
-    int n = bf_list[bf_pos];
-    int r_n = findroot(g, n);
-    if(evaluated[r_n]) continue;
-    if(!ldpc_decode_cluster(g, r_n)) g->num_parity += 1; // undo assumption that cluster is valid from merge_root_plain
-    evaluated[r_n] = true;
-  }
-  free(evaluated);
 
   /* grow clusters with method derived from breadth-first traversal (grow here in double steps such that the cluster boundary is always syndrome checks) */
   while(g->num_parity > 0){
