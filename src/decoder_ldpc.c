@@ -305,6 +305,7 @@ int check_correction_general(Graph* g){
 void ldpc_collect_graph_and_decode(int nnode, uint8_t num_nb_max, int* nn, uint8_t* len_nb, bool* is_qbt, bool* syndrome, bool* erasure, bool* decode){
   Graph g;
   g.ptr = malloc(nnode * sizeof(int)); // several meanings: (if ptr[i]>0: parent index ("pointer"), elif ptr[i]<0: syndrome parity of component, qubits and syndromes
+  g.num_qbt = malloc(nnode * sizeof(int)); // number of data qubits in cluster
   g.nn = nn; // neighbors of a node (TBD: has a lot of zeros for tanner graph due to different vertex degrees)
   g.len_nb = len_nb; // until which index there are neighbors (255 neighbors max)
   g.is_qbt = is_qbt; // 0: syndrome, 1: qubit
@@ -325,6 +326,7 @@ void ldpc_collect_graph_and_decode(int nnode, uint8_t num_nb_max, int* nn, uint8
   ldpc_syndrome_validation_and_decode(&g, num_syndrome);
 
   free(g.ptr);
+  free(g.num_qbt);
   free(g.visited);
   free(g.parity);
 }
@@ -333,6 +335,7 @@ void ldpc_collect_graph_and_decode(int nnode, uint8_t num_nb_max, int* nn, uint8
 void ldpc_collect_graph_and_decode_batch(int nnode, uint8_t num_nb_max, int* nn, uint8_t* len_nb, bool* is_qbt, bool* syndrome, bool* erasure, bool* decode, int nrep){
   Graph g;
   g.ptr = malloc(nnode * sizeof(int)); // several meanings: (if ptr[i]>0: parent index ("pointer"), elif ptr[i]<0: syndrome parity of component, qubits and syndromes
+  g.num_qbt = malloc(nnode * sizeof(int)); // number of data qubits in cluster
   g.nn = nn; // neighbors of a node (TBD: has a lot of zeros for tanner graph due to different vertex degrees)
   g.len_nb = len_nb; // until which index there are neighbors (255 neighbors max)
   g.is_qbt = is_qbt; // 0: syndrome, 1: qubit
@@ -355,6 +358,7 @@ void ldpc_collect_graph_and_decode_batch(int nnode, uint8_t num_nb_max, int* nn,
   }
 
   free(g.ptr);
+  free(g.num_qbt);
   free(g.visited);
   free(g.parity);
 }
