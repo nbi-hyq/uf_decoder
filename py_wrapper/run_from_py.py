@@ -108,15 +108,15 @@ def get_H(l, m, A_powers, B_powers):
 
 
 class UFDecoder:
-    def __init__(self, h):  # h can be coo_matrix, csr_matrix, or dense array
+    def __init__(self, h):  # h can be scipy coo_matrix, csr_matrix, or numpy array
         self.h = h
         self.nsyndromes = self.h.shape[0]
         self.nnode = self.nsyndromes + self.h.shape[1]  # number of syndromes and qubits
-        if type(h) == scipy.sparse._coo.coo_matrix:
+        if type(h) != np.ndarray and h.getformat() == 'coo':
             cnt = np.zeros(self.nsyndromes, dtype=np.uint8)  # count number of qubits per syndrome
             for i in self.h.row:
                 cnt[i] += 1
-        elif type(h) == scipy.sparse._csr.csr_matrix:
+        elif type(h) != np.ndarray and h.getformat() == 'csr':
             cnt = np.zeros(self.nsyndromes, dtype=np.uint8)  # count number of qubits per syndrome
             for row in range(self.h.shape[0]):
                 cnt[row] = len(h.getrow(row).indices)
@@ -140,12 +140,12 @@ class UFDecoder:
 
     def h_matrix_to_tanner_graph(self):
         self.is_qbt[self.nsyndromes:] += 1
-        if type(self.h) == scipy.sparse._coo.coo_matrix:
+        if type(self.h) != np.ndarray and self.h.getformat() == 'coo':
             for i in range(len(self.h.col)):
                 c = self.h.col[i]
                 r = self.h.row[i]
                 self.add_from_h_row_and_col(r, c)
-        elif type(self.h) == scipy.sparse._csr.csr_matrix:
+        elif type(self.h) != np.ndarray and self.h.getformat() == 'csr':
             for r in range(self.h.shape[0]):
                 for c in self.h.getrow(r).indices:
                     self.add_from_h_row_and_col(r, c)
