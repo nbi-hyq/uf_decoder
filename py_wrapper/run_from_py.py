@@ -70,16 +70,53 @@ def plt_2d_square_toric_code(size, error, correction, syndrome, nsyndromes):
     plt.show()
 
 
+def s_power(m, power):
+    return np.roll(np.eye(m), -power, axis=0) # shifts colummns the right by power (cyclic shift matrix)
+
+
+def x_power(l, m, power):
+    s_p = s_power(l, power)
+    return np.kron(s_p, np.eye(m))
+
+
+def y_power(l, m, power):
+    s_p = s_power(m, power)
+    return np.kron(np.eye(l), s_p)
+
+
+def get_AB(l, m, A_powers, B_powers):
+    """
+    Constructs matrices A and B where A_powers and B_powers are lists.
+    from https://arxiv.org/pdf/2308.07915.pdf Table 3 1st example
+    """
+    A1 = x_power(l, m, A_powers[0])
+    A2 = y_power(l, m, A_powers[1])
+    A3 = y_power(l, m, A_powers[2])
+    B1 = y_power(l, m, B_powers[0])
+    B2 = x_power(l, m, B_powers[1])
+    B3 = x_power(l, m, B_powers[2])
+    A = (A1 + A2 + A3) % 2
+    B = (B1 + B2 + B3) % 2
+    return A, B
+
+
+def get_H(l, m, A_powers, B_powers):
+    A, B = get_AB(l, m, A_powers, B_powers)
+    Hx = np.hstack((A, B))
+    Hz = np.hstack((B.T, A.T))
+    return Hx, Hz
+
+
 class UFDecoder:
-    def __init__(self, h):  # h can be coo_matrix, csr_matrix, or dense array
+    def __init__(self, h):  # h can be scipy coo_matrix, csr_matrix, or numpy array
         self.h = h
         self.nsyndromes = self.h.shape[0]
         self.nnode = self.nsyndromes + self.h.shape[1]  # number of syndromes and qubits
-        if type(h) == scipy.sparse._coo.coo_matrix:
+        if type(h) != np.ndarray and h.getformat() == 'coo':
             cnt = np.zeros(self.nsyndromes, dtype=np.uint8)  # count number of qubits per syndrome
             for i in self.h.row:
                 cnt[i] += 1
-        elif type(h) == scipy.sparse._csr.csr_matrix:
+        elif type(h) != np.ndarray and h.getformat() == 'csr':
             cnt = np.zeros(self.nsyndromes, dtype=np.uint8)  # count number of qubits per syndrome
             for row in range(self.h.shape[0]):
                 cnt[row] = len(h.getrow(row).indices)
@@ -103,12 +140,12 @@ class UFDecoder:
 
     def h_matrix_to_tanner_graph(self):
         self.is_qbt[self.nsyndromes:] += 1
-        if type(self.h) == scipy.sparse._coo.coo_matrix:
+        if type(self.h) != np.ndarray and self.h.getformat() == 'coo':
             for i in range(len(self.h.col)):
                 c = self.h.col[i]
                 r = self.h.row[i]
                 self.add_from_h_row_and_col(r, c)
-        elif type(self.h) == scipy.sparse._csr.csr_matrix:
+        elif type(self.h) != np.ndarray and self.h.getformat() == 'csr':
             for r in range(self.h.shape[0]):
                 for c in self.h.getrow(r).indices:
                     self.add_from_h_row_and_col(r, c)
@@ -130,8 +167,20 @@ class UFDecoder:
                                            ctypes.c_void_p(self.is_qbt.ctypes.data), ctypes.c_void_p(a_syndrome.ctypes.data),
                                            ctypes.c_void_p(a_erasure.ctypes.data), ctypes.c_void_p(self.correction.ctypes.data), ctypes.c_int(nrep))
 
+    def ldpc_decode(self, a_syndrome, a_erasure):
+        self.decode_lib.ldpc_collect_graph_and_decode(ctypes.c_int(self.nnode), ctypes.c_uint8(self.num_nb_max),
+                                           ctypes.c_void_p(self.nn.ctypes.data), ctypes.c_void_p(self.len_nb.ctypes.data),
+                                           ctypes.c_void_p(self.is_qbt.ctypes.data), ctypes.c_void_p(a_syndrome.ctypes.data),
+                                           ctypes.c_void_p(a_erasure.ctypes.data), ctypes.c_void_p(self.correction.ctypes.data))
+
+    def ldpc_decode_batch(self, a_syndrome, a_erasure, nrep):
+        self.decode_lib.ldpc_collect_graph_and_decode_batch(ctypes.c_int(self.nnode), ctypes.c_uint8(self.num_nb_max),
+                                           ctypes.c_void_p(self.nn.ctypes.data), ctypes.c_void_p(self.len_nb.ctypes.data),
+                                           ctypes.c_void_p(self.is_qbt.ctypes.data), ctypes.c_void_p(a_syndrome.ctypes.data),
+                                           ctypes.c_void_p(a_erasure.ctypes.data), ctypes.c_void_p(self.correction.ctypes.data), ctypes.c_int(nrep))
 
 if __name__ == '__main__':
+    ########### 2d surface code: ###########
     # build H-matrix/Tanner graph
     L = 40
     H = toric_code_x_stabilisers(L)
@@ -159,3 +208,32 @@ if __name__ == '__main__':
     syndrome[:g.nsyndromes] = g.h @ err_plus_correction % 2
     print('sum syndrome: ', np.sum(syndrome[:g.nsyndromes]))
     plt_2d_square_toric_code(L, error, g.correction[g.nsyndromes:], syndrome, g.nsyndromes)
+
+    ########### bivariate bicycle LDPC code: ###########
+    # build H-matrix/Tanner graph
+    H, _ = get_H(6, 6, [3, 1, 2], [3, 1, 2])
+    g = UFDecoder(H)
+
+    # apply noise and get sydromes
+    p_err = 0.05
+    p_erasure = 0.10
+    for p_err in [0.01*i for i in range(10)]:
+        for p_erasure in [0.05*i for i in range(10)]:
+            erasure = np.zeros(g.nnode, dtype=np.uint8)
+            erasure[g.nsyndromes:] = np.random.binomial(1, p_erasure, g.nnode - g.nsyndromes)
+            pauli_err = np.random.binomial(1, p_err, g.nnode - g.nsyndromes)
+            error = np.logical_or(pauli_err, np.logical_and(erasure[g.nsyndromes:], np.random.binomial(1, 0.5, g.nnode - g.nsyndromes)))
+            syndrome = np.zeros(g.nnode, dtype=np.uint8)
+            syndrome[:g.nsyndromes] = g.h @ error % 2
+
+            # decode
+            t0 = time.perf_counter()
+            g.ldpc_decode(syndrome, erasure)
+            t1 = time.perf_counter()
+            print('time (s): ', t1 - t0)
+
+            # recompute syndrome to check decoding
+            err_plus_correction = np.logical_xor(error, g.correction[g.nsyndromes:])
+            syndrome[:g.nsyndromes] = g.h @ err_plus_correction % 2
+            print('sum syndrome: ', np.sum(syndrome[:g.nsyndromes]))
+ 

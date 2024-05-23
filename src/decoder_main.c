@@ -70,7 +70,7 @@ int get_even_clusters_bfs(Graph* g, int num_syndromes){
   int bfs_next = 0; // next free position in bfs_list
   memset(g->visited, 0, g->nnode * sizeof(bool));
   for(int i=0; i < g->nnode; i++){
-    if (g->erasure[i]){ // erasures 1st (if only erasure errors, one is done after BFS over this)
+    if (g->erasure[i]){ // erasures 1st (if only erasure errors, one is done after doing one step from here in Tanner graph)
       bfs_list[bfs_next++] = i; // seed
       g->visited[i] = true; // mark as visited to avoid adding to bfs_list twice
     }
@@ -111,7 +111,7 @@ int get_even_clusters_bfs_skip(Graph* g, int num_syndromes){
   int bfs_next_skipped = 0; // next free position in bfs_list_skipped
   memset(g->visited, 0, g->nnode * sizeof(bool));
   for(int i=0; i < g->nnode; i++){
-    if (g->erasure[i]){ // erasures 1st (if only erasure errors, one is done after BFS over this)
+    if (g->erasure[i]){ // erasures 1st (if only erasure errors, one is done after doing one step from here in Tanner graph)
       bfs_list[bfs_next++] = i; // seed
       g->visited[i] = true; // mark as visited to avoid adding to bfs_list twice
     }
@@ -191,7 +191,7 @@ int get_even_clusters_bfs_skip_store_root(Graph* g, int num_syndromes){
   int bfs_next = 0; // next free position in bfs_list
   memset(g->visited, 0, g->nnode * sizeof(bool));
   for(int i=0; i < g->nnode; i++){
-    if (g->erasure[i]){ // erasures 1st (if only erasure errors, one is done after BFS over this)
+    if (g->erasure[i]){ // erasures 1st (if only erasure errors, one is done after doing one step from here in Tanner graph)
       bfs_list[bfs_next++] = i; // seed
       g->visited[i] = true; // mark as visited to avoid adding to bfs_list twice
     }
@@ -279,7 +279,7 @@ Forest get_forest(Graph* g){
   memset(f.visited, 0, f.nnode * sizeof(bool)); // can only change from 0->1
   memset(f.leaf, 1, f.nnode * sizeof(bool)); // can only change from 1->0
   for(int i=0; i<f.nnode; i++) f.parent[i] = -1; // -1 indicated tree root
-  int* l_bfs = malloc(g->nnode * sizeof(int)); // another time BFS to build forest
+  int* l_bfs = malloc(g->nnode * sizeof(int)); // another time breadth-first traversal to build forest
   for(int n=0; n<g->nnode; n++){
     if(g->visited[n] && !f.visited[n]){ // n is root point of tree
       int r_n = findroot(g, n);
@@ -287,7 +287,7 @@ Forest get_forest(Graph* g){
       int bfs_pos = 0; // current position for breadth-first graph traversal
       l_bfs[0] = n;
       f.visited[n] = 1;
-      while(bfs_pos < bfs_next){ // crawl cluster with BFS to create spanning tree
+      while(bfs_pos < bfs_next){ // crawl cluster breadth-first to create spanning tree
         int m = l_bfs[bfs_pos];
         for(uint8_t j=0; j<g->len_nb[m]; j++){ // look for neighbors that are not in tree yet
           int nb = g->nn[m*g->num_nb_max+j];
@@ -325,7 +325,7 @@ int peel_forest(Forest* f, Graph* g, bool print){
         g->decode[l] = 1; // decoder output
         if(print) printf("%i \n", l); // print decoder output
       }
-      if(v < 0){ // v < 0 can happen is l is erased and root
+      if(v < 0){ // v < 0 can happen if l is erased and root
         num_leaf--;
         continue;
       }
@@ -379,7 +379,7 @@ void collect_graph_and_decode(int nnode, uint8_t num_nb_max, int* nn, uint8_t* l
   g.is_qbt = is_qbt; // 0: syndrome, 1: qubit
   g.num_nb_max = num_nb_max; // maximum number of neighbors per node
   g.nnode = nnode; // number of nodes (qubits + syndromes)
-  g.visited = malloc(nnode * sizeof(bool)); // node visited (e.g. in BFS)
+  g.visited = malloc(nnode * sizeof(bool)); // node visited (e.g. in breadth-first traversal)
   g.syndrome = syndrome; // syndrome (for node type 0)
   g.erasure = erasure; // erasure (for node type 1)
   g.error = NULL; // error (for node type 1)
@@ -410,7 +410,7 @@ void collect_graph_and_decode_batch(int nnode, uint8_t num_nb_max, int* nn, uint
   g.is_qbt = is_qbt; // 0: syndrome, 1: qubit
   g.num_nb_max = num_nb_max; // maximum number of neighbors per node
   g.nnode = nnode; // number of nodes (qubits + syndromes)
-  g.visited = malloc(nnode * sizeof(bool)); // node visited (e.g. in BFS)
+  g.visited = malloc(nnode * sizeof(bool)); // node visited (e.g. in breadth-first traversal)
   g.error = NULL; // error (for node type 1)
   g.parity = malloc(nnode * sizeof(bool)); // parity of syndromes in cluster (has meaning only for root node), 0: even number of syndromes
   g.crr_surf_x = NULL; // correlation surface 1 (for checking logical error)

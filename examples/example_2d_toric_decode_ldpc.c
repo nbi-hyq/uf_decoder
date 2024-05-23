@@ -11,7 +11,7 @@
 /* simulate square lattice toric code (decoding via general ldcp decoder) */
 int main(){
   srand(83959790);
-  float p_erasure = 0.0; // probability of erasure
+  float p_erasure = 0.1; // probability of erasure
   int lsize = 10;
   int num_err = 20;
   for(int i=0; i<num_err; i++){
