@@ -178,14 +178,24 @@ int visualize_error(Graph* g, int size){
       int n = x + y*size;
       if(g->syndrome[3*n]) printf("x");
       else printf("o");
-      if(g->error[3*n+1]) printf("e");
-      else printf("-");
+      if(!g->erasure[3*n+1]){
+        if(g->error[3*n+1]) printf("e");
+        else printf("-");
+      } else {
+        if(g->error[3*n+1]) printf("E");
+        else printf("=");
+      }
     }
     printf("\n");
     for(int x=0; x<size; x++){
       int n = x + y*size;
-      if(g->error[3*n+2]) printf("e");
-      else printf("|");
+      if(!g->erasure[3*n+2]){
+        if(g->error[3*n+2]) printf("e");
+        else printf("|");
+      } else {
+        if(g->error[3*n+2]) printf("E");
+        else printf("/");
+      }
       printf(" ");
     }
     printf("\n");
