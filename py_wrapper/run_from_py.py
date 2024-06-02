@@ -107,6 +107,28 @@ def get_H(l, m, A_powers, B_powers):
     return Hx, Hz
 
 
+def toric_code_3d_stabilizers(L):
+    H = np.zeros((L**3, 3*L**3), dtype=np.uint8)
+    for x in range(L):
+        for y in range(L):
+            for z in range(L):
+                H[x*L**2 + y*L + z, 3*(x*L**2 + y*L + z):3*(x*L**2 + y*L + z)+3] = np.array([1, 1, 1], dtype=np.uint8)
+                H[x*L**2 + y*L + z, 3*(((x+1) % L)*L**2 + y*L + z)] = 1
+                H[x*L**2 + y*L + z, 3*(x*L**2 + ((y+1) % L)*L + z) + 1] = 1
+                H[x*L**2 + y*L + z, 3*(x*L**2 + y*L + ((z+1) % L)) + 2] = 1
+    return H
+
+
+def toric_code_3d_logicals(L):
+    log = np.zeros((3, 3*L**3), dtype=np.uint8)
+    for i in range(L):
+        for j in range(L):
+            log[0, 3*(i*L**2 + j*L) + 2] = 1
+            log[1, 3*(i*L**2 + j) + 1] = 1
+            log[2, 3*(j*L + i) + 0] = 1
+    return log
+
+
 class UFDecoder:
     def __init__(self, h):  # h can be scipy coo_matrix, csr_matrix, or numpy array
         self.h = h
