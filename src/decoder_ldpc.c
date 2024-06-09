@@ -145,10 +145,10 @@ bool ldpc_decode_cluster(Graph* g, int root){
   return decodable;
 }
 
-/* merge two graph fragments in g->ptr representation, return new root node index, update validity of merged cluster */
+/* merge two graph fragments in g->ptr representation, return new root node index, update validity of merged cluster
+   (assumes for parity update that r1 is cluster from where stuff is grown (assumed to be invalid until update at end) */
 static int merge_root(Graph* g, int r1, int r2){
-  if (g->parity[r1] ^ g->parity[r2]) g->num_parity -= 1; // assume that the merged cluster is valid, if it is invalid +1 will be done later
-  else if (g->parity[r1] && g->parity[r2]) g->num_parity -= 2; // assume that the merged cluster is valid, if it is invalid +1 will be done later
+  if (g->parity[r2]) g->num_parity -= 1;
   if (g->ptr[r1] > g->ptr[r2]){
     g->num_qbt[r2] += g->num_qbt[r1]; // add number of data qubits in smaller cluster to bigger cluster
     g->ptr[r2] += g->ptr[r1]; // add size of smaller component to bigger one
@@ -159,9 +159,13 @@ static int merge_root(Graph* g, int r1, int r2){
     g->ptr[r1] += g->ptr[r2]; // add size of smaller component to bigger one
     g->ptr[r2] = r1; // attach component with root r2 to larger component with root r1
   }
-  g->parity[r1] = !ldpc_decode_cluster(g, r1);
-  if(g->parity[r1]) g->num_parity += 1; // the merged cluster is still invalid
   return r1;
+}
+
+/* after growing cluster, check again if it is valid */
+static void update_cluster_validity(Graph* g, int root){
+  g->parity[root] = !ldpc_decode_cluster(g, root);
+  if(!g->parity[root]) g->num_parity -= 1;
 }
 
 /* used for storing skipped nodes in linked list connected to cluster root */
@@ -218,6 +222,7 @@ void ldpc_syndrome_validation_and_decode(Graph* g, int num_syndromes){
   while (bf_pos < num_erasure){
     int n = bf_list[bf_pos];
     int r_n = findroot(g, n);
+    if (!g->parity[r_n]) g->num_parity += 1; // if start from valid cluster, compensate g->num_parity -= 1 in update_cluster_validity
     for(uint8_t i=0; i<g->len_nb[n]; i++){
       int nb = g->nn[n*g->num_nb_max + i];
       int r_nb = findroot(g, nb);
@@ -227,6 +232,7 @@ void ldpc_syndrome_validation_and_decode(Graph* g, int num_syndromes){
         g->visited[nb] = true;
       }
     }
+    update_cluster_validity(g, r_n);
     bf_pos++;
   }
 
@@ -267,6 +273,7 @@ void ldpc_syndrome_validation_and_decode(Graph* g, int num_syndromes){
           }
         }
       }
+      update_cluster_validity(g, r_n);
     } else {
       if (a_skipped[r_n] == NULL){
         a_skipped[r_n] = malloc(sizeof(nodeSk));
