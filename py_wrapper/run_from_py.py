@@ -237,8 +237,6 @@ if __name__ == '__main__':
     g = UFDecoder(H)
 
     # apply noise and get sydromes
-    p_err = 0.05
-    p_erasure = 0.10
     for p_err in [0.01*i for i in range(10)]:
         for p_erasure in [0.05*i for i in range(10)]:
             erasure = np.zeros(g.nnode, dtype=np.uint8)
