@@ -12,6 +12,7 @@ typedef struct {
   bool* parity;
   bool* visited;
   bool* decode;
+  int* num_qbt;
   int* crr_surf_x;
   int* crr_surf_y;
   int nnode, num_edges, num_parity, num_crr_x, num_crr_y;
