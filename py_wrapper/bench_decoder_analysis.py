@@ -15,7 +15,7 @@ def num_decoding_failures_batch(decoder, logicals, p_err, p_erase, num_rep):
     for i in range(num_rep):
         error_pauli = np.random.binomial(1, p_err, H.shape[1])
         erasure[i*nnode+H.shape[0]:(i+1)*nnode] = np.random.binomial(1, p_erase, H.shape[1])
-        l_noise.append(np.logical_or(error_pauli, np.logical_and(erasure[i*nnode+H.shape[0]:(i+1)*nnode], np.random.binomial(1, 0.5, H.shape[1]))))
+        l_noise.append(np.logical_or(np.logical_and(np.logical_not(erasure[i*nnode+H.shape[0]:(i+1)*nnode]), error_pauli), np.logical_and(erasure[i*nnode+H.shape[0]:(i+1)*nnode], np.random.binomial(1, 0.5, H.shape[1]))))
         syndrome[i*nnode:i*nnode+H.shape[0]] = H @ l_noise[i] % 2
 
     # decode batch
@@ -42,7 +42,7 @@ def num_decoding_failures(decoder, logicals, p_err, p_erase, num_rep):
     for i in range(num_rep):
         error_pauli = np.random.binomial(1, p_err, H.shape[1])
         erasure = np.random.binomial(1, p_erase, decoder.nnode)
-        noise = np.logical_or(error_pauli, np.logical_and(erasure[H.shape[0]:], np.random.binomial(1, 0.5, H.shape[1])))
+        noise = np.logical_or(np.logical_and(np.logical_not(erasure[H.shape[0]:]), error_pauli), np.logical_and(erasure[H.shape[0]:], np.random.binomial(1, 0.5, H.shape[1])))
         syndrome = np.zeros(decoder.nnode, dtype=np.uint8)
         syndrome[:decoder.nsyndromes] = H @ noise % 2
 

@@ -214,7 +214,7 @@ if __name__ == '__main__':
     erasure = np.zeros(g.nnode, dtype=np.uint8)
     erasure[g.nsyndromes:] = np.random.binomial(1, p_erasure, g.nnode - g.nsyndromes)
     pauli_err = np.random.binomial(1, p_err, g.nnode - g.nsyndromes)
-    error = np.logical_or(pauli_err, np.logical_and(erasure[g.nsyndromes:], np.random.binomial(1, 0.5, g.nnode - g.nsyndromes)))
+    error = np.logical_or(np.logical_and(np.logical_not(erasure[g.nsyndromes:]), pauli_err), np.logical_and(erasure[g.nsyndromes:], np.random.binomial(1, 0.5, g.nnode - g.nsyndromes)))
     syndrome = np.zeros(g.nnode, dtype=np.uint8)
     syndrome[:g.nsyndromes] = g.h @ error % 2
     plt_2d_square_toric_code(L, error, g.correction[g.nsyndromes:], syndrome, g.nsyndromes)
@@ -242,7 +242,7 @@ if __name__ == '__main__':
             erasure = np.zeros(g.nnode, dtype=np.uint8)
             erasure[g.nsyndromes:] = np.random.binomial(1, p_erasure, g.nnode - g.nsyndromes)
             pauli_err = np.random.binomial(1, p_err, g.nnode - g.nsyndromes)
-            error = np.logical_or(pauli_err, np.logical_and(erasure[g.nsyndromes:], np.random.binomial(1, 0.5, g.nnode - g.nsyndromes)))
+            error = np.logical_or(np.logical_and(np.logical_not(erasure[g.nsyndromes:]), pauli_err), np.logical_and(erasure[g.nsyndromes:], np.random.binomial(1, 0.5, g.nnode - g.nsyndromes)))
             syndrome = np.zeros(g.nnode, dtype=np.uint8)
             syndrome[:g.nsyndromes] = g.h @ error % 2
 

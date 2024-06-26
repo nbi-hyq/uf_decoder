@@ -45,7 +45,7 @@ int apply_erasure_and_error(Graph* g, float p_erasure, float p_error){
   for(int i=0; i < g->nnode; i++){
     if(g->is_qbt[i]){
       g->erasure[i] = (rand_float() < p_erasure);
-      if ((g->erasure[i] && rand_float() < 0.5) || (rand_float() < p_error)) { // erasure makes error with 50%
+      if ((g->erasure[i] && rand_float() < 0.5) || (!g->erasure[i] && rand_float() < p_error)) { // erasure makes error with 50%
         g->error[i] = 1;
         for(uint8_t j=0; j<g->len_nb[i]; j++){
           if(g->syndrome[g->nn[i*g->num_nb_max+j]]){
