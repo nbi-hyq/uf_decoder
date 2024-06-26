@@ -7,7 +7,7 @@
 #include "../inc/graph_type.h"
 #include "../inc/graph_construction.h"
 
-/* get random number in range [0, 1] (TBD: imited resolution due to CSTD_RAND_MAX) */
+/* get random number in range [0, 1] (TBD: limited resolution due to CSTD_RAND_MAX) */
 static float rand_float(){
   return (float)(rand() & CSTD_RAND_MAX) / (float)CSTD_RAND_MAX;
 }
