@@ -17,3 +17,6 @@ $ cd build/
 $ ninja
 ```
 For interfacing with ```Python```, you will use the library ```libSpeedDecoder.so``` via ```run_from_py.py```.
+
+## source code
+The implementation of Algorithms 1-3 can be found in ```src/decoder_main.c```. The implementation of Algorithm 4 is in ```src/decoder_ldpc.c``` with ```src/stabilizer_main.c``` containing the used Gaussian elimination with bitwise-logic.
