@@ -1,8 +1,8 @@
 # uf_decoder
 
-Modified union-find decoder for arbitrary CSS codes. The decoder makes a simplification as it avoids tracking of cluster boundaries and uses breadth-first graph traversal of the Tanner graph of the code.
+Modified union-find decoder for arbitrary CSS codes. The decoder makes a simplification as it avoids tracking of cluster boundaries and uses instead breadth-first graph traversal of the Tanner graph of the code. The obtained thresholds are on par with https://arxiv.org/abs/1709.06218, yet the decoding is faster due to the made simplifications.
 
-# features
+## features
 - Fast decoding of topological codes with periodic boundary conditions (Algorithms 1, 2, 3)
 - Decoding of general qLDPC codes (Algorithm 4)
 - Include qubit erasure/loss into the decoding
