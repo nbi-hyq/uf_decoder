@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define dtypeBlk uint32_t  // change dtype depending on error rate
+#define dtypeBlk uint32_t  // other data type may be better depending on average cluster size
 
 typedef struct {
   dtypeBlk* mat;
