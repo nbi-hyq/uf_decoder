@@ -41,7 +41,8 @@ def num_decoding_failures(decoder, logicals, p_err, p_erase, num_rep):
     time_decode = 0.0
     for i in range(num_rep):
         error_pauli = np.random.binomial(1, p_err, H.shape[1])
-        erasure = np.random.binomial(1, p_erase, decoder.nnode)
+        erasure = np.zeros(decoder.nnode, dtype=np.uint8)
+        erasure[decoder.nsyndromes:] = np.random.binomial(1, p_erase, decoder.nnode - decoder.nsyndromes)
         noise = np.logical_or(np.logical_and(np.logical_not(erasure[H.shape[0]:]), error_pauli), np.logical_and(erasure[H.shape[0]:], np.random.binomial(1, 0.5, H.shape[1])))
         syndrome = np.zeros(decoder.nnode, dtype=np.uint8)
         syndrome[:decoder.nsyndromes] = H @ noise % 2
