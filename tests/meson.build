@@ -1,12 +1,13 @@
 tests = [
-  'toric_2d_square_alg1',
-  'toric_2d_square_alg2',
-  'toric_2d_square_alg3',
-  'toric_2d_triangular_alg1',
-  'toric_2d_triangular_alg2',
-  'toric_2d_triangular_alg3',
+  'toric2d_square_alg1',
+  'toric2d_square_alg2',
+  'toric2d_square_alg4',
+  'toric2d_square_ldpc',
+  'toric2d_triangular_alg1',
+  'toric2d_triangular_alg2',
+  'toric2d_triangular_alg4',
+  'toric2d_triangular_ldpc',
   'logical_errors',
-  'toric_2d_square_ldpc',
 ]
 
 foreach t : tests

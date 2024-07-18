@@ -8,13 +8,13 @@
 #include "../inc/decoder_main.h"
 
 int main(){
-  srand(892373);
+  srand(494839);
   int lsize = 10; // size in each dimension
   int n_rep = 20; // repeat several times
   int num_err = 20;
   int num_erasure = 16;
 
-  Graph g = get_2d_triangular_toric_code(lsize);
+  Graph g = get_2d_toric_code(lsize);
   int r = validate_graph(&g);
 
   for(int rep=0; rep<n_rep; rep++){
@@ -23,7 +23,7 @@ int main(){
     for(int i=0; i<num_err; i++){
       float p_err = 0.0 + 0.2 * i / num_err;
       int num_syndromes = apply_erasure_and_error(&g, p_erasure, p_err);
-      get_even_clusters_bfs_skip(&g, num_syndromes);
+      get_even_clusters_bfs(&g, num_syndromes); // Algorithm 1
       Forest f = get_forest(&g);
       peel_forest(&f, &g, false);
       visualize_decode(&g, lsize);

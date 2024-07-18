@@ -8,7 +8,7 @@
 #include "inc/graph_construction.h"
 #include "inc/decoder_main.h"
 
-/* simulate square lattice toric code (with Pauli errors and erasure) */
+/* simulate square lattice toric code with Pauli errors and erasure (using Algorithm 2) */
 int main(){
   srand(37577);
   int num_rep = 10000; // number of repetitions for averaging
@@ -24,7 +24,7 @@ int main(){
         int cnt_error = 0;
         for(int rep=0; rep<num_rep; rep++){
           int num_syndromes = apply_erasure_and_error(&g, p_erasure, p_err);
-          get_even_clusters_bfs_skip_store_root(&g, num_syndromes);
+          get_even_clusters_bfs_skip_store_root(&g, num_syndromes); // Algorithm 2
           Forest f = get_forest(&g);
           peel_forest(&f, &g, false);
           bool logical_error_x = 0;
