@@ -1,6 +1,6 @@
 # uf_decoder
 
-This repository contains union-find decoders for CSS codes. For the 2d and the (2+1)d toric code, the obtained thresholds are on par with the original union-find decoder from https://arxiv.org/abs/1709.06218. In contrast to the original decoder, our decoder grows clusters node-by-node instead of cluster-by-cluster for syndrome validation. It avoids tracking cluster boundaries and uses breadth-first graph traversal of the Tanner graph instead. Note that this repository is a preliminary version of the decoder and breaking changes may occur in future versions.
+This repository contains union-find decoders for CSS codes (see https://arxiv.org/abs/2407.15988 for a detailed explanation). For the 2d and the (2+1)d toric code, the obtained thresholds are on par with the original union-find decoder from https://arxiv.org/abs/1709.06218. In contrast to the original decoder, our decoders grow clusters node-by-node instead of cluster-by-cluster for syndrome validation. They avoid tracking cluster boundaries and use breadth-first graph traversal of the Tanner graph instead. Note that this repository is a preliminary version of the decoders, and breaking changes may occur in future versions.
 
 ## features
 - Fast decoding of topological codes with periodic boundary conditions (Algorithms 1, 2, 4)
