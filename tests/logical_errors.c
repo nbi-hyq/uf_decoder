@@ -7,7 +7,7 @@
 #include "../inc/graph_construction.h"
 #include "../inc/decoder_main.h"
 
-/* test square lattice toric code threshold (without erasures) */
+/* test square lattice toric code threshold without erasures (for Algorithm 2) */
 int main(){
   srand(67242);
   int num_rep = 150; // number of repetitions for averaging

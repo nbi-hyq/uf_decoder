@@ -9,7 +9,7 @@
 #include "inc/decoder_main.h"
 #include "inc/decoder_ldpc.h"
 
-/* simulate square lattice toric code (with Pauli errors and erasure), use general ldpc decoder for this */
+/* simulate square lattice toric code with Pauli errors and erasure, use general ldpc decoder (Algorithm 3) for this */
 int main(){
   srand(358938);
   int num_rep = 2000; // number of repetitions for averaging
@@ -25,7 +25,7 @@ int main(){
         int cnt_error = 0;
         for(int rep=0; rep<num_rep; rep++){
           int num_syndromes = apply_erasure_and_error(&g, p_erasure, p_err);
-          ldpc_syndrome_validation_and_decode(&g, num_syndromes); 
+          ldpc_syndrome_validation_and_decode(&g, num_syndromes); // Algorithm 3
           bool logical_error_x = 0;
           bool logical_error_y = 0;
           for(int c=0; c<g.num_crr_x; c++){

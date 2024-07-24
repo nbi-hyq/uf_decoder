@@ -8,7 +8,7 @@
 #include "../inc/decoder_main.h"
 
 int main(){
-  srand(494839);
+  srand(892373);
   int lsize = 10; // size in each dimension
   int n_rep = 20; // repeat several times
   int num_err = 20;
@@ -23,7 +23,7 @@ int main(){
     for(int i=0; i<num_err; i++){
       float p_err = 0.0 + 0.2 * i / num_err;
       int num_syndromes = apply_erasure_and_error(&g, p_erasure, p_err);
-      get_even_clusters_bfs(&g, num_syndromes);
+      get_even_clusters_bfs_skip(&g, num_syndromes); // Algorithm 4
       Forest f = get_forest(&g);
       peel_forest(&f, &g, false);
       visualize_decode(&g, lsize);

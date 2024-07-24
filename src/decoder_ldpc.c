@@ -191,7 +191,7 @@ static void free_nodeSk_list(nodeSk* node){
   free(node);
 }
 
-/* Syndrome validation using breadth-first Tanner graph traversal to grow clusters and Gaussian elimination for validating them */
+/* Algorithm 3: syndrome validation using breadth-first Tanner graph traversal to grow clusters and Gaussian elimination for validating them */
 void ldpc_syndrome_validation_and_decode(Graph* g, int num_syndromes){
   memset(g->decode, 0, g->nnode * sizeof(bool));
   nodeSk** a_skipped = malloc(g->nnode * sizeof(nodeSk*));

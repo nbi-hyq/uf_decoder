@@ -8,7 +8,7 @@
 #include "inc/decoder_main.h"
 #include "inc/decoder_ldpc.h"
 
-/* simulate square lattice toric code (decoding via general ldcp decoder) */
+/* simulate square lattice toric code, decoding via general ldcp decoder (Algorithm 3) */
 int main(){
   srand(83959790);
   float p_erasure = 0.1; // probability of erasure
@@ -19,7 +19,7 @@ int main(){
     printf("---------- p = %f\n", p_err);
     Graph g = get_2d_toric_code(lsize);
     int num_syndromes = apply_erasure_and_error(&g, p_erasure, p_err);
-    ldpc_syndrome_validation_and_decode(&g, num_syndromes);
+    ldpc_syndrome_validation_and_decode(&g, num_syndromes); // Algorithm 3
     visualize_error(&g, lsize);
     visualize_decode(&g, lsize);
     free_graph(&g);
