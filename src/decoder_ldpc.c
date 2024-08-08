@@ -39,7 +39,7 @@ static int getNextPrimePower2(int N){
   else return 2147483647; // integer maximum
 }
 
-/* find position of number in open addressing hash table. Wite elements into hash table if it does not exist yet
+/* find position of number in open addressing hash table. Write elements into hash table if it does not exist yet
 idx: number that is searched, hashTab: hashtable with -1 indicating empty spot
 return: 0 when idx was not in hash table, 1 if it was */
 static bool isVisited(int idx, int* hashTab, int tabSize){
@@ -51,14 +51,14 @@ static bool isVisited(int idx, int* hashTab, int tabSize){
   } else return 1;
 }
 
-/* given global index idx, lookup local index in reduced H matrix */
+/* given global index idx, lookup local index in reduced H-matrix */
 static int idxLookup(int idx, int* hashTab, int* idxMap, int tabSize){
   int h = idx % tabSize;
   while(hashTab[h] >= 0 && hashTab[h] != idx) h = (h + 1) % tabSize; // TBD rm 1st
   return idxMap[h];
 }
 
-/* write local index into datastruture */
+/* write local index into datastructure */
 static void idxWrite(int idx, int* hashTab, int* idxMap, int tabSize, int idxLocal){
   int h = idx % tabSize;
   while(hashTab[h] >= 0 && hashTab[h] != idx) h = (h + 1) % tabSize;
@@ -84,34 +84,45 @@ bool ldpc_decode_cluster(Graph* g, int root){
   int* globalToMat = malloc(sizeof(int)*tableSize); // index mapping from global index to reduced matrix (column or row index depending on whether it is syndrome or data qubit)
   for(int i=0; i<tableSize; i++) visited[i] = -1; // mark all parts of hash table as empty by -1
   int cntqbtLen = 0; // count number of qubits below index len_lBf
-  int cntqbtPos = 0; // count number of qubits below index bf_pos
   int bf_pos = 0;
   int len_lBf = 1;
   lBf[0] = root;
   isVisited(root, visited, tableSize);
   idxWrite(root, visited, globalToMat, tableSize, 0);
-  if(g->is_qbt[root]){
+  if(g->n_qbt > root){
     g->decode[root] = 0; // reset previous decoding
     cntqbtLen = 1;
   }
   while(bf_pos < len_lBf){
     int idxLocal = idxLookup(lBf[bf_pos], visited, globalToMat, tableSize);
-    if(!g->is_qbt[lBf[bf_pos]] && g->syndrome[lBf[bf_pos]]) write_matrix_position_bit(w.mat, idxLocal, n_col - 1, w.num_blocks_row, 1); // last column specifying right part of H*e=s
-    else if (g->is_qbt[lBf[bf_pos]]) g->decode[lBf[bf_pos]] = 0; // reset previous decoding
+    uint8_t num_nb_max;
+    int* nn;
+    int idx_arry; // index in syndrome or data qubit array
+    if(lBf[bf_pos] >= g->n_qbt){ // syndrome
+      if(g->syndrome[lBf[bf_pos] - g->n_qbt]) write_matrix_position_bit(w.mat, idxLocal, n_col - 1, w.num_blocks_row, 1); // last column specifying right part of H*e=s
+      nn = g->nn_syndr;
+      num_nb_max = g->num_nb_max_syndr;
+      idx_arry = lBf[bf_pos] - g->n_qbt;
+    } else { // data qubit
+      g->decode[lBf[bf_pos]] = 0; // reset previous decoding
+      nn = g->nn_qbt;
+      num_nb_max = g->num_nb_max_qbt;
+      idx_arry = lBf[bf_pos];
+    }
     for(uint8_t i=0; i<g->len_nb[lBf[bf_pos]]; i++){
-      int nb = g->nn[lBf[bf_pos]*g->num_nb_max + i];
+      int nb = nn[idx_arry*num_nb_max + i];
       if(findroot(g, nb) == root){
         int idxLocalNb;
         if(!isVisited(nb, visited, tableSize)){
-          if(g->is_qbt[nb]) idxLocalNb = cntqbtLen++;
+          if(nb < g->n_qbt) idxLocalNb = cntqbtLen++;
           else idxLocalNb = len_lBf - cntqbtLen;
           idxWrite(nb, visited, globalToMat, tableSize, idxLocalNb); // store local index for new neighbor
           lBf[len_lBf++] = nb;
         } else idxLocalNb = idxLookup(nb, visited, globalToMat, tableSize);
-        if(g->is_qbt[lBf[bf_pos]]) write_matrix_position_bit(w.mat, idxLocalNb, idxLocal, w.num_blocks_row, 1); // write columnwise
+        if(lBf[bf_pos] < g->n_qbt) write_matrix_position_bit(w.mat, idxLocalNb, idxLocal, w.num_blocks_row, 1); // write columnwise
       }
     }
-    if(g->is_qbt[bf_pos++]) cntqbtPos++;
+    bf_pos++;
   }
 
   /* decode the cluster if possible by Gaussian elimination */
@@ -124,9 +135,9 @@ bool ldpc_decode_cluster(Graph* g, int root){
     if(read_matrix_position_bit(w.mat, r, n_col - 1, num_blocks_row)){ // if there is a syndrome that has to be fixed
       int c = 0; //TBD: min(r, n_col - 1)
       while(!read_matrix_position_bit(w.mat, r, c, num_blocks_row) && c < n_col - 1) c++; // find (not yet used) qubit that belongs to tagged syndrome and can be used for its correction
-      if(c == n_col - 1) {decodable = false; break;} // syndome cannot be corrected
+      if(c == n_col - 1) {decodable = false; break;} // syndrome cannot be corrected
       decode[c] = 1;
-      for(int r2=r-1; r2>=0; r2--){ // flip other sydromes that are affected
+      for(int r2=r-1; r2>=0; r2--){ // flip other syndromes that are affected
         if(read_matrix_position_bit(w.mat, r2, c, num_blocks_row)) flip_matrix_position_bit(w.mat, r2, n_col - 1, num_blocks_row);
       }
     }
@@ -134,7 +145,7 @@ bool ldpc_decode_cluster(Graph* g, int root){
 
   /* apply decoding at global indices (TBD: maybe better with mapping from local to global index) */
   for(int i=0; i<tableSize; i++){
-    if(visited[i] >= 0 && g->is_qbt[visited[i]] && decode[globalToMat[i]]) g->decode[visited[i]] = 1;
+    if(visited[i] >= 0 && g->n_qbt > visited[i] && decode[globalToMat[i]]) g->decode[visited[i]] = 1;
   }
 
   free_wmat(w);
@@ -193,27 +204,30 @@ static void free_nodeSk_list(nodeSk* node){
 
 /* Algorithm 3: syndrome validation using breadth-first Tanner graph traversal to grow clusters and Gaussian elimination for validating them */
 void ldpc_syndrome_validation_and_decode(Graph* g, int num_syndromes){
-  memset(g->decode, 0, g->nnode * sizeof(bool));
-  nodeSk** a_skipped = malloc(g->nnode * sizeof(nodeSk*));
-  for(int i=0; i<g->nnode; i++) a_skipped[i] = NULL;
-  nodeSk** a_skipped_last = malloc(g->nnode * sizeof(nodeSk*));
-  int* bf_list = malloc(g->nnode * sizeof(int));
+  memset(g->decode, 0, g->n_qbt * sizeof(bool));
+  int nnode = g->n_qbt + g->n_syndr;
+  nodeSk** a_skipped = malloc(nnode * sizeof(nodeSk*));
+  for(int i=0; i<nnode; i++) a_skipped[i] = NULL;
+  nodeSk** a_skipped_last = malloc(nnode * sizeof(nodeSk*));
+  int* bf_list = malloc(nnode * sizeof(int));
   int bf_next = 0; // next free position in bf_list
-  memset(g->visited, 0, g->nnode * sizeof(bool));
-  for(int i=0; i < g->nnode; i++){
-    if (g->erasure[i]){ // erasures 1st (if only erasure errors, one is done after doing one step from here in Tanner graph)
+  memset(g->visited, 0, nnode * sizeof(bool));
+  for(int i=0; i < g->n_qbt; i++){ // erasures 1st (if only erasure errors, one is done after doing one step from here in Tanner graph)
+    if (g->erasure[i]){
       bf_list[bf_next++] = i; // seed
       g->visited[i] = true; // mark as visited to avoid adding to bf_list twice
     }
     g->ptr[i] = -1; // all isolated nodes in beginning
-    g->num_qbt[i] = g->is_qbt[i]; // number of data qubits in cluster (0 or 1)
+    g->num_qbt[i] = 1; // number of data qubits in cluster
   }
   int num_erasure = bf_next;
-  for(int i=0; i < g->nnode; i++){
-    if (g->syndrome[i]){ // syndromes 2nd
+  for(int i=g->n_qbt; i < nnode; i++){ // syndromes 2nd
+    if (g->syndrome[i - g->n_qbt]){
       bf_list[bf_next++] = i; // seed
       g->visited[i] = true; // mark as visited to avoid adding to bf_list twice
     }
+    g->ptr[i] = -1; // all isolated nodes in beginning
+    g->num_qbt[i] = 0; // number of data qubits in cluster
   }
   g->num_parity = num_syndromes; // num_parity has here the meaning of number of invalid clusters
   int bf_pos = 0; // current position for breadth-first graph traversal
@@ -223,8 +237,20 @@ void ldpc_syndrome_validation_and_decode(Graph* g, int num_syndromes){
     int n = bf_list[bf_pos];
     int r_n = findroot(g, n);
     if (!g->parity[r_n]) g->num_parity += 1; // if start from valid cluster, compensate g->num_parity -= 1 in update_cluster_validity
+    uint8_t num_nb_max;
+    int* nn;
+    int idx_arry;
+    if(n < g->n_qbt){
+      num_nb_max = g->num_nb_max_qbt;
+      nn = g->nn_qbt;
+      idx_arry = n;
+    } else {
+      num_nb_max = g->num_nb_max_syndr;
+      nn = g->nn_syndr;
+      idx_arry = n - g->n_qbt;
+    }
     for(uint8_t i=0; i<g->len_nb[n]; i++){
-      int nb = g->nn[n*g->num_nb_max + i];
+      int nb = nn[idx_arry*num_nb_max + i];
       int r_nb = findroot(g, nb);
       if(r_n != r_nb) r_n = merge_root(g, r_n, r_nb);
       if (g->visited[nb] == false) {
@@ -242,23 +268,23 @@ void ldpc_syndrome_validation_and_decode(Graph* g, int num_syndromes){
     int r_n = findroot(g, n);
     if(g->parity[r_n]){ // only grow invalid cluster
       for(uint8_t i=0; i<g->len_nb[n]; i++){
-        int nb = g->nn[n*g->num_nb_max + i]; // this neighbor is always a data qubit (no check qubit), so it cannot have been skipped nor be part of another cluster
+        int nb = g->nn_syndr[(n - g->n_qbt)*g->num_nb_max_syndr + i]; // this neighbor is always a data qubit (no check qubit), so it cannot have been skipped nor be part of another cluster
         int r_nb = findroot(g, nb);
         if(r_n != r_nb){
           r_n = merge_root(g, r_n, r_nb);
           for(uint8_t j=0; j<g->len_nb[nb]; j++){
-            int nb2 = g->nn[nb*g->num_nb_max + j]; // this neighbor is always a check qubit, so it can have been skipped or be part of another cluster
+            int nb2 = g->nn_qbt[nb*g->num_nb_max_qbt + j]; // this neighbor is always a syndrome, so it can have been skipped or be part of another cluster
             int r_nb2 = findroot(g, nb2);
           
             /* if r_nb2 is skipped cluster, recover it */
             if (a_skipped[r_nb2] != NULL){
               nodeSk* node = a_skipped[r_nb2];
               bf_list[bf_next] = node->i_node;
-              bf_next = (bf_next + 1) % g->nnode;
+              bf_next = (bf_next + 1) % nnode;
               while(node->next != NULL){
                 node = node->next;
                 bf_list[bf_next] = node->i_node;
-                bf_next = (bf_next + 1) % g->nnode;
+                bf_next = (bf_next + 1) % nnode;
               }
               free_nodeSk_list(a_skipped[r_nb2]);
               a_skipped[r_nb2] = NULL;
@@ -267,7 +293,7 @@ void ldpc_syndrome_validation_and_decode(Graph* g, int num_syndromes){
             if(r_n != r_nb2) r_n = merge_root(g, r_n, r_nb2);
             if (g->visited[nb2] == false) {
               bf_list[bf_next] = nb2;
-              bf_next = (bf_next + 1) % g->nnode;
+              bf_next = (bf_next + 1) % nnode;
               g->visited[nb2] = true;
             }
           }
@@ -285,9 +311,9 @@ void ldpc_syndrome_validation_and_decode(Graph* g, int num_syndromes){
         a_skipped_last[r_n] = a_skipped_last[r_n]->next;
       }
     }
-    bf_pos = (bf_pos + 1) % g->nnode;
+    bf_pos = (bf_pos + 1) % nnode;
   }
-  for(int i=0; i<g->nnode; i++) if (a_skipped[i] != NULL) free_nodeSk_list(a_skipped[i]);
+  for(int i=0; i<nnode; i++) if (a_skipped[i] != NULL) free_nodeSk_list(a_skipped[i]);
   free(a_skipped);
   free(a_skipped_last);
   free(bf_list);
@@ -295,13 +321,13 @@ void ldpc_syndrome_validation_and_decode(Graph* g, int num_syndromes){
 
 /* check if the decoding has worked in the sense that no syndromes are left */
 int check_correction_general(Graph* g){
-  memset(g->syndrome, 0, g->nnode * sizeof(bool));
+  memset(g->syndrome, 0, g->n_syndr * sizeof(bool));
   int num_syndromes = 0;
-  for(int i=0; i < g->nnode; i++){
-    if(g->is_qbt[i] && (g->error[i] ^ g->decode[i])){
+  for(int i=0; i < g->n_qbt; i++){
+    if(g->error[i] ^ g->decode[i]){
       for(uint8_t j=0; j<g->len_nb[i]; j++){
-        num_syndromes += (g->syndrome[g->nn[i*g->num_nb_max+j]] ? -1 : +1);
-        g->syndrome[g->nn[i*g->num_nb_max+j]] = (g->syndrome[g->nn[i*g->num_nb_max+j]] + 1) % 2;
+        num_syndromes += (g->syndrome[g->nn_qbt[i*g->num_nb_max_qbt+j] - g->n_qbt] ? -1 : +1);
+        g->syndrome[g->nn_qbt[i*g->num_nb_max_qbt+j] - g->n_qbt] = (g->syndrome[g->nn_qbt[i*g->num_nb_max_qbt+j] - g->n_qbt] + 1) % 2;
       }
     }
   }
@@ -309,27 +335,30 @@ int check_correction_general(Graph* g){
 }
 
 /* given graph and syndrome, compute decoding for general ldpc code */
-void ldpc_collect_graph_and_decode(int nnode, uint8_t num_nb_max, int* nn, uint8_t* len_nb, bool* is_qbt, bool* syndrome, bool* erasure, bool* decode){
+void ldpc_collect_graph_and_decode(int n_qbt, int n_syndr, uint8_t num_nb_max_qbt, uint8_t num_nb_max_syndr, int* nn_qbt, int* nn_syndr, uint8_t* len_nb, bool* syndrome, bool* erasure, bool* decode){
   Graph g;
-  g.ptr = malloc(nnode * sizeof(int)); // several meanings: (if ptr[i]>0: parent index ("pointer"), elif ptr[i]<0: syndrome parity of component, qubits and syndromes
-  g.num_qbt = malloc(nnode * sizeof(int)); // number of data qubits in cluster
-  g.nn = nn; // neighbors of a node (TBD: has a lot of zeros for tanner graph due to different vertex degrees)
+  g.n_qbt = n_qbt;
+  g.n_syndr = n_syndr;
+  g.ptr = malloc((n_qbt + n_syndr) * sizeof(int)); // if ptr[i]>0: parent index ("pointer"), elif ptr[i]<0: size of cluster, qubits and syndromes
+  g.num_qbt = malloc((n_qbt + n_syndr) * sizeof(int)); // number of data qubits in cluster
+  g.nn_qbt = nn_qbt; // neighbors of data qubit
+  g.nn_syndr = nn_syndr; // neighbors of syndrome
   g.len_nb = len_nb; // until which index there are neighbors (255 neighbors max)
-  g.is_qbt = is_qbt; // 0: syndrome, 1: qubit
-  g.num_nb_max = num_nb_max; // maximum number of neighbors per node
-  g.nnode = nnode; // number of nodes (qubits + syndromes)
-  g.visited = malloc(nnode * sizeof(bool)); // node visited (e.g. in breadth-first graph traversal)
-  g.syndrome = syndrome; // syndrome (for node type 0)
-  g.erasure = erasure; // erasure (for node type 1)
-  g.error = NULL; // error (for node type 1)
-  g.parity = malloc(nnode * sizeof(bool)); // parity of syndromes in cluster (has meaning only for root node), 0: even number of syndromes
+  g.num_nb_max_qbt = num_nb_max_qbt; // maximum number of neighbors per data qubit
+  g.num_nb_max_syndr = num_nb_max_syndr; // maximum number of neighbors per syndrome
+  g.visited = malloc((n_qbt + n_syndr) * sizeof(bool)); // node visited (e.g. in breadth-first traversal)
+  g.syndrome = syndrome;
+  g.erasure = erasure;
+  g.error = NULL;
+  g.parity = malloc((n_qbt + n_syndr) * sizeof(bool)); // parity of syndromes in cluster (has meaning only for root node), 0: even number of syndromes
   g.decode = decode; // decoder output
   g.crr_surf_x = NULL; // correlation surface 1 (for checking logical error)
   g.crr_surf_y = NULL; // correlation surface 2 (for checking logical error)
-  memcpy(g.parity, g.syndrome, g.nnode * sizeof(bool)); // syndrome and parity of cluster starts as the same thing (when all nodes are isolated)
+  memset(g.parity, 0, g.n_qbt * sizeof(bool));
+  memcpy(g.parity + g.n_qbt, g.syndrome, g.n_syndr * sizeof(bool)); // syndrome and parity of cluster starts as the same thing (when all nodes are isolated)
 
   int num_syndrome = 0;
-  for(int i=0; i<g.nnode; i++) if(syndrome[i]) num_syndrome++; // no check of !is_qbt done here
+  for(int i=0; i<g.n_syndr; i++) if(syndrome[i]) num_syndrome++;
   ldpc_syndrome_validation_and_decode(&g, num_syndrome);
 
   free(g.ptr);
@@ -339,28 +368,32 @@ void ldpc_collect_graph_and_decode(int nnode, uint8_t num_nb_max, int* nn, uint8
 }
 
 /* given graph and syndrome, compute decoding in batches of nrep repetitions (for general ldpc code) */
-void ldpc_collect_graph_and_decode_batch(int nnode, uint8_t num_nb_max, int* nn, uint8_t* len_nb, bool* is_qbt, bool* syndrome, bool* erasure, bool* decode, int nrep){
+void ldpc_collect_graph_and_decode_batch(int n_qbt, int n_syndr, uint8_t num_nb_max_qbt, uint8_t num_nb_max_syndr, int* nn_qbt, int* nn_syndr, uint8_t* len_nb, bool* syndrome, bool* erasure, bool* decode, int nrep){
   Graph g;
-  g.ptr = malloc(nnode * sizeof(int)); // several meanings: (if ptr[i]>0: parent index ("pointer"), elif ptr[i]<0: syndrome parity of component, qubits and syndromes
-  g.num_qbt = malloc(nnode * sizeof(int)); // number of data qubits in cluster
-  g.nn = nn; // neighbors of a node (TBD: has a lot of zeros for tanner graph due to different vertex degrees)
+  g.n_qbt = n_qbt;
+  g.n_syndr = n_syndr;
+  g.ptr = malloc((n_qbt + n_syndr) * sizeof(int)); // if ptr[i]>0: parent index ("pointer"), elif ptr[i]<0: size of cluster, qubits and syndromes
+  g.num_qbt = malloc((n_qbt + n_syndr) * sizeof(int)); // number of data qubits in cluster
+  g.nn_qbt = nn_qbt; // neighbors of data qubit
+  g.nn_syndr = nn_syndr; // neighbors of syndrome
   g.len_nb = len_nb; // until which index there are neighbors (255 neighbors max)
-  g.is_qbt = is_qbt; // 0: syndrome, 1: qubit
-  g.num_nb_max = num_nb_max; // maximum number of neighbors per node
-  g.nnode = nnode; // number of nodes (qubits + syndromes)
-  g.visited = malloc(nnode * sizeof(bool)); // node visited (e.g. in breadth-first graph traversal)
-  g.error = NULL; // error (for node type 1)
-  g.parity = malloc(nnode * sizeof(bool)); // parity of syndromes in cluster (has meaning only for root node), 0: even number of syndromes
+  g.num_nb_max_qbt = num_nb_max_qbt; // maximum number of neighbors per data qubit
+  g.num_nb_max_syndr = num_nb_max_syndr; // maximum number of neighbors per syndrome
+  g.visited = malloc((n_qbt + n_syndr) * sizeof(bool)); // node visited (e.g. in breadth-first traversal)
+  g.error = NULL;
+  g.parity = malloc((n_qbt + n_syndr) * sizeof(bool)); // parity of syndromes in cluster (has meaning only for root node), 0: even number of syndromes
   g.crr_surf_x = NULL; // correlation surface 1 (for checking logical error)
   g.crr_surf_y = NULL; // correlation surface 2 (for checking logical error)
 
   for(int r=0; r<nrep; r++){
-    g.syndrome = syndrome + r*g.nnode; // syndrome (for node type 0)
-    g.decode = decode + r*g.nnode; // decoder output
-    g.erasure = erasure + r*g.nnode;
-    memcpy(g.parity, g.syndrome, g.nnode * sizeof(bool)); // syndrome and parity of cluster starts as the same thing (when all nodes are isolated)
+    g.syndrome = syndrome + r*g.n_syndr;
+    g.decode = decode + r*g.n_qbt; // decoder output
+    g.erasure = erasure + r*g.n_qbt;
+    memset(g.parity, 0, g.n_qbt * sizeof(bool));
+    memcpy(g.parity + g.n_qbt, g.syndrome, g.n_syndr * sizeof(bool)); // syndrome and parity of cluster starts as the same thing (when all nodes are isolated)
     int num_syndrome = 0;
-    for(int i=0; i<g.nnode; i++) if(g.syndrome[i]) num_syndrome++; // no check of !is_qbt done here
+    for(int i=0; i<g.n_syndr; i++) if(g.syndrome[i]) num_syndrome++;
+
     ldpc_syndrome_validation_and_decode(&g, num_syndrome);
   }
 

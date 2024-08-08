@@ -37,7 +37,6 @@ int main(){
         }
         if(logical_error_x || logical_error_y){
           cnt_error++;
-          //visualize_decode(&g, lsize);
         }
         free_forest(&f);
       }

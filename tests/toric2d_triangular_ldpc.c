@@ -25,7 +25,6 @@ int main(){
       float p_err = 0.0 + 0.15 * i / num_err;
       int num_syndromes = apply_erasure_and_error(&g, p_erasure, p_err);
       ldpc_syndrome_validation_and_decode(&g, num_syndromes); // Algorithm 3
-      visualize_decode(&g, lsize);
       int c = check_correction_general(&g);
       printf("%f %i\n", p_err, c);
       r |= c;

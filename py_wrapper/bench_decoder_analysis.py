@@ -8,18 +8,19 @@ from run_from_py import toric_code_x_logicals, toric_code_x_stabilisers, UFDecod
 def num_decoding_failures_batch(decoder, logicals, p_err, p_erase, num_rep):
     # apply noise and erasures
     H = decoder.h
-    nnode = H.shape[0] + H.shape[1]
-    syndrome = np.zeros(nnode * num_rep, dtype=np.uint8)
-    erasure = np.zeros(nnode * num_rep, dtype=np.uint8)
+    n_syndr = H.shape[0]
+    n_qbt = H.shape[1]
+    syndrome = np.zeros(n_syndr * num_rep, dtype=np.uint8)
+    erasure = np.zeros(n_qbt * num_rep, dtype=np.uint8)
     l_noise = []
     for i in range(num_rep):
-        error_pauli = np.random.binomial(1, p_err, H.shape[1])
-        erasure[i*nnode+H.shape[0]:(i+1)*nnode] = np.random.binomial(1, p_erase, H.shape[1])
-        l_noise.append(np.logical_or(np.logical_and(np.logical_not(erasure[i*nnode+H.shape[0]:(i+1)*nnode]), error_pauli), np.logical_and(erasure[i*nnode+H.shape[0]:(i+1)*nnode], np.random.binomial(1, 0.5, H.shape[1]))))
-        syndrome[i*nnode:i*nnode+H.shape[0]] = H @ l_noise[i] % 2
+        error_pauli = np.random.binomial(1, p_err, n_qbt).astype(np.uint8)
+        erasure[i*n_qbt:(i+1)*n_qbt] = np.random.binomial(1, p_erase, n_qbt).astype(np.uint8)
+        l_noise.append(np.logical_or(np.logical_and(np.logical_not(erasure[i*n_qbt:(i+1)*n_qbt]), error_pauli), np.logical_and(erasure[i*n_qbt:(i+1)*n_qbt], np.random.binomial(1, 0.5, n_qbt))))
+        syndrome[i*n_syndr:(i+1)*n_syndr] = (H @ l_noise[i] % 2).astype(np.uint8)
 
     # decode batch
-    decoder.correction = np.zeros(nnode * num_rep, dtype=np.uint8)  # create space of batch
+    decoder.correction = np.zeros(n_qbt * num_rep, dtype=np.uint8)  # create space of batch
     start_time = time.perf_counter()
     decoder.decode_batch(syndrome, erasure, num_rep)
     end_time = time.perf_counter()
@@ -28,7 +29,7 @@ def num_decoding_failures_batch(decoder, logicals, p_err, p_erase, num_rep):
     # evaluate decoding
     n_err = 0
     for i in range(num_rep):
-        error = (l_noise[i] + decoder.correction[i*nnode+H.shape[0]:(i+1)*nnode]) % 2
+        error = (l_noise[i] + decoder.correction[i*n_qbt:(i+1)*n_qbt]) % 2
         if np.any(error @ logicals.T % 2):
             n_err += 1
     return time_decode, n_err
@@ -40,19 +41,17 @@ def num_decoding_failures(decoder, logicals, p_err, p_erase, num_rep):
     n_err = 0
     time_decode = 0.0
     for i in range(num_rep):
-        error_pauli = np.random.binomial(1, p_err, H.shape[1])
-        erasure = np.zeros(decoder.nnode, dtype=np.uint8)
-        erasure[decoder.nsyndromes:] = np.random.binomial(1, p_erase, decoder.nnode - decoder.nsyndromes)
-        noise = np.logical_or(np.logical_and(np.logical_not(erasure[H.shape[0]:]), error_pauli), np.logical_and(erasure[H.shape[0]:], np.random.binomial(1, 0.5, H.shape[1])))
-        syndrome = np.zeros(decoder.nnode, dtype=np.uint8)
-        syndrome[:decoder.nsyndromes] = H @ noise % 2
+        error_pauli = np.random.binomial(1, p_err, n_qbt).astype(np.uint8)
+        erasure = np.random.binomial(1, p_erase, n_qbt).astype(np.uint8)
+        noise = np.logical_or(np.logical_and(np.logical_not(erasure), error_pauli), np.logical_and(erasure, np.random.binomial(1, 0.5, n_qbt)))
+        syndrome = (H @ noise % 2).astype(np.uint8)
 
         start_time = time.perf_counter()
         decoder.decode(syndrome, erasure)
         end_time = time.perf_counter()
         time_decode += (end_time - start_time)
 
-        error = (noise + decoder.correction[decoder.nsyndromes:]) % 2
+        error = (noise + decoder.correction) % 2
         if np.any(error @ logicals.T % 2):
             n_err += 1
     return time_decode, n_err
@@ -65,7 +64,7 @@ if __name__ == "__main__":
     # speed scaling with size
     num_trials = 3000
     l_L = [10*(i+1) for i in range(16)]
-    l_p = [0.01, 0.03, 0.05, 0.07, 0.09, 0.11]  # probability of Pauli error
+    l_p = [0.001, 0.01, 0.03, 0.05, 0.07, 0.09, 0.11]  # probability of Pauli error
     fig1, ax1 = plt.subplots()
     a_time = np.zeros((len(l_L), len(l_p)), dtype=np.double)
     for i_L, L in enumerate(l_L):
