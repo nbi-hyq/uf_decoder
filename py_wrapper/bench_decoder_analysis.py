@@ -1,7 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import time
-from run_from_py import toric_code_x_logicals, toric_code_x_stabilisers, UFDecoder
+from py_decoder import UFDecoder
+from some_codes import toric_code_x_logicals, toric_code_x_stabilisers
 
 
 # call library only once for block of many repetitions
@@ -59,16 +60,16 @@ def num_decoding_failures(decoder, logicals, p_err, p_erase, num_rep):
 
 if __name__ == "__main__":
     batch_evaluate = True  # do all repetitions of same parameter in one block
-    plt.rcParams.update({'font.size': 8})
 
     # speed scaling with size
-    num_trials = 3000
+    print('------ speed benchmark -------')
+    num_trials = 100
     l_L = [10*(i+1) for i in range(16)]
     l_p = [0.001, 0.01, 0.03, 0.05, 0.07, 0.09, 0.11]  # probability of Pauli error
     fig1, ax1 = plt.subplots()
     a_time = np.zeros((len(l_L), len(l_p)), dtype=np.double)
     for i_L, L in enumerate(l_L):
-        print(L)
+        print('L =', L)
         Hx = toric_code_x_stabilisers(L)
         logX = toric_code_x_logicals(L)
         decoder = UFDecoder(Hx)
@@ -84,20 +85,20 @@ if __name__ == "__main__":
     ax1.loglog(np.array([2*l_L[0]**2, 5000, 2*l_L[-1]**2]), np.array([4.4*10**-4*2*l_L[0]**2/5000, 4.4*10**-4, 4.4*10**-4*2*l_L[-1]**2/5000]), '--b')  # linear reference arxiv1709.06218 (p=0.01)
     ax1.set_xlabel('number of qubits (2L^2)')
     ax1.set_ylabel('time')
-    fig1.set_size_inches(3.4, 2.0)
     plt.savefig('time_scaling.pdf')
     np.savetxt('time.txt', a_time)
 
     # threshold and speed (different sizes, sweep error rates)
-    num_trials = 5000
-    l_L = [10, 20, 30, 40]
+    print('------ benchmark threshold and speed -------')
+    num_trials = 1000
+    l_L = [10, 20, 40]
     l_p = [0.006*i for i in range(20)]  # probability of Pauli error
     fig1, ax1 = plt.subplots()
     ax2 = ax1.twinx()
     a_time = np.zeros((len(l_L), len(l_p)), dtype=np.double)
     a_error = np.zeros((len(l_L), len(l_p)), dtype=np.double)
     for i_L, L in enumerate(l_L):
-        print(L)
+        print('L =', L)
         Hx = toric_code_x_stabilisers(L)
         logX = toric_code_x_logicals(L)
         decoder = UFDecoder(Hx)
@@ -113,19 +114,19 @@ if __name__ == "__main__":
     ax1.set_xlabel('physical error rate')
     ax1.set_ylabel('logical error rate')
     ax2.set_ylabel('time (s)')
-    fig1.set_size_inches(3.4, 2.8)
     plt.savefig('error_and_time.pdf')
     np.savetxt('time2.txt', a_time)
     np.savetxt('error2.txt', a_error)
 
     # threshold as a function of Pauli errors and erasures
-    num_trials = 5000
-    l_L = [30, 60]
+    print('------ Pauli error vs erasure thresholds -------')
+    num_trials = 500
+    l_L = [20, 40]
     l_p = [0.003*i for i in range(40)]  # probability of Pauli error
     l_ers = [0.05*i for i in range(10)]  # probability of erasure
     a_error = np.zeros((len(l_L), len(l_p), len(l_ers)), dtype=np.double)
     for i_L, L in enumerate(l_L):
-        print(L)
+        print('L =', L)
         Hx = toric_code_x_stabilisers(L)
         logX = toric_code_x_logicals(L)
         decoder = UFDecoder(Hx)
@@ -153,7 +154,6 @@ if __name__ == "__main__":
     ax1.set_xlabel('erasure rate')
     ax1.set_ylabel('Pauli error rate')
     ax1.set(xlim=(0, 0.5), ylim=(0, 0.1))
-    fig1.set_size_inches(3.4, 2.0)
     plt.savefig('error_vs_erasure.pdf')
     np.savetxt('error_vs_erasure.txt', l_threshold)
 
