@@ -90,7 +90,7 @@ if __name__ == '__main__':
     H = toric_code_x_stabilisers(L)
     g = UFDecoder(H)
 
-    # apply noise and get sydromes
+    # apply noise and get syndromes
     p_err = 0.05
     p_erasure = 0.10
     erasure = np.random.binomial(1, p_erasure, g.n_qbt).astype(np.uint8)
@@ -116,7 +116,7 @@ if __name__ == '__main__':
     H, _ = get_bb(6, 6, [3, 1, 2], [3, 1, 2])
     g = UFDecoder(H)
 
-    # apply noise and get sydromes
+    # apply noise and get syndromes
     for p_err in [0.01*i for i in range(10)]:
         for p_erasure in [0.05*i for i in range(10)]:
             erasure = np.random.binomial(1, p_erasure, g.n_qbt).astype(np.uint8)

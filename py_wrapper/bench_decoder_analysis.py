@@ -5,7 +5,7 @@ from py_decoder import UFDecoder
 from some_codes import toric_code_x_logicals, toric_code_x_stabilisers
 
 
-# call library only once for block of many repetitions
+# call the decoding library only once for block of many repetitions
 def num_decoding_failures_batch(decoder, logicals, p_err, p_erase, num_rep):
     # apply noise and erasures
     H = decoder.h
@@ -59,7 +59,7 @@ def num_decoding_failures(decoder, logicals, p_err, p_erase, num_rep):
 
 
 if __name__ == "__main__":
-    batch_evaluate = True  # do all repetitions of same parameter in one block
+    batch_evaluate = True  # do all repetitions of the same parameter in one block
 
     # speed scaling with size
     print('------ speed benchmark -------')

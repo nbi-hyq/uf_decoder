@@ -68,7 +68,7 @@ def plt_2d_square_toric_code(size, error, correction, syndrome, nsyndromes):
 
 
 def s_power(m, power):
-    return np.roll(np.eye(m), -power, axis=0) # shifts colummns the right by power (cyclic shift matrix)
+    return np.roll(np.eye(m), -power, axis=0) # shifts columns the right by power (cyclic shift matrix)
 
 
 def x_power(l, m, power):
@@ -101,7 +101,7 @@ def get_AB(l, m, A_powers, B_powers):
     return A, B
 
 
-def toric_code_3d_stabilizers(L):
+def toric_code_2plus1d_stabilizers(L):
     H = np.zeros((L**3, 3*L**3), dtype=np.uint8)
     for x in range(L):
         for y in range(L):
@@ -113,7 +113,7 @@ def toric_code_3d_stabilizers(L):
     return H
 
 
-def toric_code_3d_logicals(L):
+def toric_code_2plus1d_logicals(L):
     log = np.zeros((3, 3*L**3), dtype=np.uint8)
     for i in range(L):
         for j in range(L):

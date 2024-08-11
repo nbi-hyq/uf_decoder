@@ -51,7 +51,7 @@ num_trials = 10000
 a_pauli_error_rate = np.logspace(-3, -1, num=10)
 erasure_rate = 0.02
 
-# run simulation using UF-decoder and batch evaluation
+# run a simulation using UF-decoder and batch evaluation
 for i, n_qbt in enumerate(n_list):
     print('n = ', n_qbt)
     bicycle_code = codes.BBCode(l_dims[i], l_terms_a[i], l_terms_b[i])
