@@ -2,44 +2,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 from qldpc import codes
 from py_decoder import UFDecoder
+from simulation_run import num_decoding_failures_batch
+
 
 '''
 union-find decoding examples for hypergraph product codes
 codes are generated using https://github.com/Infleqtion/qLDPC/tree/main
 '''
-
-
-def num_decoding_failures_batch(decoder, logicals, p_err, p_erase, num_rep, topological=False):
-    # apply random Pauli errors and erasures
-    H = decoder.h
-    n_syndr = H.shape[0]
-    n_qbt = H.shape[1]
-    syndrome = np.zeros(n_syndr * num_rep, dtype=np.uint8)
-    erasure = np.zeros(n_qbt * num_rep, dtype=np.uint8)
-    l_noise = []
-    for i in range(num_rep):
-        error_pauli = np.random.binomial(1, p_err, n_qbt).astype(np.uint8)
-        erasure[i*n_qbt:(i+1)*n_qbt] = np.random.binomial(1, p_erase, n_qbt).astype(np.uint8)
-        l_noise.append(np.logical_or(np.logical_and(np.logical_not(erasure[i*n_qbt:(i+1)*n_qbt]), error_pauli), np.logical_and(erasure[i*n_qbt:(i+1)*n_qbt], np.random.binomial(1, 0.5, n_qbt))))
-        syndrome[i*n_syndr:(i+1)*n_syndr] = (H @ l_noise[i] % 2).astype(np.uint8)
-
-    # decode batch
-    decoder.correction = np.zeros(n_qbt * num_rep, dtype=np.uint8)  # create space for batch of decodings
-    if topological:
-        decoder.decode_batch(syndrome, erasure, num_rep)  # use faster decoder for topological codes
-    else:
-        decoder.ldpc_decode_batch(syndrome, erasure, num_rep)  # use more general, yet slower decoder for non-topological codes
-
-    # evaluate decoding
-    n_err = 0
-    for i in range(num_rep):       
-        error = (l_noise[i] + decoder.correction[i*n_qbt:(i+1)*n_qbt]) % 2
-        if (H @ error % 2).any():
-            print('decoding invalid')
-        if np.any(error @ logicals.T % 2):
-            n_err += 1
-    return n_err
-
 
 ##### create 2d toric codes via hypergraph product construction #####
 num_trials = 1000

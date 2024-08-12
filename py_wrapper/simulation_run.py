@@ -4,9 +4,53 @@ import time
 from py_decoder import UFDecoder
 from some_codes import toric_code_x_logicals, toric_code_x_stabilisers
 
+'''
+1) Apply uniform noise (Pauli errors with rate: p_err, erasures with rate: p_erase)
+2) Compute syndromes and run decoder
+3) Count the number of logical errors
+'''
 
-# call the decoding library only once for block of many repetitions
-def num_decoding_failures_batch(decoder, logicals, p_err, p_erase, num_rep):
+'''
+call the decoding library only once for a block of many repetitions, and return number of logical errors
+decoder: object of type UFDecoder
+logicals: logical operators as array, (number of logicals) x (number of qubits)
+p_err: Pauli error rate
+p_erase: erasure rate
+num_rep: number of repetitions for averaging
+topological: use decoder for topological codes if True, use decoder for general LDPC codes if false
+'''
+def num_decoding_failures_batch(decoder, logicals, p_err, p_erase, num_rep, topological=False):
+    # apply random Pauli errors and erasures
+    H = decoder.h
+    n_syndr = H.shape[0]
+    n_qbt = H.shape[1]
+    syndrome = np.zeros(n_syndr * num_rep, dtype=np.uint8)
+    erasure = np.zeros(n_qbt * num_rep, dtype=np.uint8)
+    l_noise = []
+    for i in range(num_rep):
+        error_pauli = np.random.binomial(1, p_err, n_qbt).astype(np.uint8)
+        erasure[i*n_qbt:(i+1)*n_qbt] = np.random.binomial(1, p_erase, n_qbt).astype(np.uint8)
+        l_noise.append(np.logical_or(np.logical_and(np.logical_not(erasure[i*n_qbt:(i+1)*n_qbt]), error_pauli), np.logical_and(erasure[i*n_qbt:(i+1)*n_qbt], np.random.binomial(1, 0.5, n_qbt))))
+        syndrome[i*n_syndr:(i+1)*n_syndr] = (H @ l_noise[i] % 2).astype(np.uint8)
+
+    # decode batch
+    decoder.correction = np.zeros(n_qbt * num_rep, dtype=np.uint8)  # create space for batch of decodings
+    if topological:
+        decoder.decode_batch(syndrome, erasure, num_rep)  # use faster decoder for topological codes
+    else:
+        decoder.ldpc_decode_batch(syndrome, erasure, num_rep)  # use more general, yet slower decoder for non-topological codes
+
+    # evaluate decoding
+    n_err = 0
+    for i in range(num_rep):
+        error = (l_noise[i] + decoder.correction[i*n_qbt:(i+1)*n_qbt]) % 2
+        if np.any(error @ logicals.T % 2):
+            n_err += 1
+    return n_err
+
+
+# call the decoding library only once for a block of many repetitions, and return number of logical errors + running time
+def num_decoding_failures_and_time_batch(decoder, logicals, p_err, p_erase, num_rep):
     # apply noise and erasures
     H = decoder.h
     n_syndr = H.shape[0]
@@ -37,8 +81,9 @@ def num_decoding_failures_batch(decoder, logicals, p_err, p_erase, num_rep):
 
 
 # call library for every repetition (correction is written into existing array decoder.correction)
-def num_decoding_failures(decoder, logicals, p_err, p_erase, num_rep):
+def num_decoding_failures_and_time(decoder, logicals, p_err, p_erase, num_rep):
     H = decoder.h
+    n_qbt = H.shape[1]
     n_err = 0
     time_decode = 0.0
     for i in range(num_rep):
@@ -75,9 +120,9 @@ if __name__ == "__main__":
         decoder = UFDecoder(Hx)
         for i_p, p in enumerate(l_p):
             if batch_evaluate:
-                total_time, _ = num_decoding_failures_batch(decoder, logX, p, 0.0, num_trials)
+                total_time, _ = num_decoding_failures_and_time_batch(decoder, logX, p, 0.0, num_trials)
             else:
-                total_time, _ = num_decoding_failures(decoder, logX, p, 0.0, num_trials)
+                total_time, _ = num_decoding_failures_and_time(decoder, logX, p, 0.0, num_trials)
             a_time[i_L, i_p] = total_time / num_trials
     for i_p, _ in enumerate(l_p):
         ax1.loglog(2*np.array(l_L)**2, a_time[:, i_p])
@@ -104,9 +149,9 @@ if __name__ == "__main__":
         decoder = UFDecoder(Hx)
         for i_p, p in enumerate(l_p):
             if batch_evaluate:
-                total_time, num_errors = num_decoding_failures_batch(decoder, logX, p, 0.0, num_trials)
+                total_time, num_errors = num_decoding_failures_and_time_batch(decoder, logX, p, 0.0, num_trials)
             else:
-                total_time, num_errors = num_decoding_failures(decoder, logX, p, 0.0, num_trials)
+                total_time, num_errors = num_decoding_failures_and_time(decoder, logX, p, 0.0, num_trials)
             a_error[i_L, i_p] = num_errors / num_trials
             a_time[i_L, i_p] = total_time / num_trials
         ax1.semilogy(l_p, a_error[i_L, :])
@@ -133,9 +178,9 @@ if __name__ == "__main__":
         for i_p, p in enumerate(l_p):
             for i_e, e in enumerate(l_ers):
                 if batch_evaluate:
-                    total_time, num_errors = num_decoding_failures_batch(decoder, logX, p, e, num_trials)
+                    total_time, num_errors = num_decoding_failures_and_time_batch(decoder, logX, p, e, num_trials)
                 else:
-                    total_time, num_errors = num_decoding_failures(decoder, logX, p, e, num_trials)
+                    total_time, num_errors = num_decoding_failures_and_time(decoder, logX, p, e, num_trials)
                 a_error[i_L, i_p, i_e] = num_errors / num_trials
     l_threshold = []
     for i_e, e in enumerate(l_ers):
