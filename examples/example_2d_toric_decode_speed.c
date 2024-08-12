@@ -31,7 +31,7 @@ int main(){
       }
 
       gettimeofday(&t1, NULL);
-      printf("%i %li\n", g.nnode, 1000000*(t1.tv_sec - t0.tv_sec) + t1.tv_usec - t0.tv_usec);
+      printf("%i %i %li\n", g.n_qbt, g.n_syndr, 1000000*(t1.tv_sec - t0.tv_sec) + t1.tv_usec - t0.tv_usec);
       free_graph(&g);
     }
   }

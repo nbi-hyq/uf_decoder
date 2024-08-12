@@ -105,7 +105,7 @@ void flip_matrix_position_bit(dtypeBlk* mat, int i_r, int i_c, uint64_t num_bloc
 
 /* Gaussian elimination of "mat" in F2 with a matrix element represented by on single bit
    n_rows, n_cols: dimensions of the matrix
-   num_eliminated_col: terminates when that number of colums fulfill the Gaussian elimination condition */
+   num_eliminated_col: terminates when that number of columns fulfill the Gaussian elimination condition */
 void GaussElimin_bit(dtypeBlk* mat, int n_rows, int n_cols, int num_eliminated_col) {
   int ix_r, lead, i;
   uint64_t num_blocks_row = n_cols / (8 * sizeof(dtypeBlk)) + 1;
@@ -145,7 +145,7 @@ void GaussElimin_bit(dtypeBlk* mat, int n_rows, int n_cols, int num_eliminated_c
 
 /* Gaussian elimination of "mat" in F2 with a matrix element represented by on single bit
    n_rows, n_cols: dimensions of the matrix
-   col_A: array speficying the order in which the columns are considered in the Gaussian elimination
+   col_A: array specifying the order in which the columns are considered in the Gaussian elimination
    num_A: number of elements in col_A */
 void GaussElimin_bit_col_wise(dtypeBlk* mat, int n_rows, int n_cols, int num_A, int* col_A) {
   int ix_r, lead, i;
