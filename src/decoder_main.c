@@ -167,7 +167,7 @@ int get_even_clusters_bfs_skip(Graph* g, int num_syndromes){
       for(uint8_t i=0; i<g->len_nb[n]; i++){
         int nb = nn[idx_arry*num_nb_max + i];
         int r_nb = findroot(g, nb);
-        if(r_n != r_nb) r_n = merge_root(g, r_n, r_nb); // TBD?: break when parity[r_n] changes?, but that would be half-skipped node
+        if(r_n != r_nb) r_n = merge_root(g, r_n, r_nb);
         if (g->visited[nb] == false) {
           bfs_list[bfs_next++] = nb;
           g->visited[nb] = true;
@@ -297,7 +297,7 @@ int get_even_clusters_bfs_skip_store_root(Graph* g, int num_syndromes){
           a_skipped[r_nb] = NULL;
         }
 
-        if(r_n != r_nb) r_n = merge_root(g, r_n, r_nb); // TBD?: break when parity[r_n] changes?, but that would be half-skipped node
+        if(r_n != r_nb) r_n = merge_root(g, r_n, r_nb);
         if (g->visited[nb] == false) {
           bfs_list[bfs_next] = nb;
           bfs_next = (bfs_next + 1) % nnode;
