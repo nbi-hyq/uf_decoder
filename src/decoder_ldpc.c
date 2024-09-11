@@ -133,8 +133,8 @@ bool ldpc_decode_cluster(Graph* g, int root){
   uint64_t num_blocks_row = n_col / (8 * sizeof(dtypeBlk)) + 1;
   for(int r = n_row-1; r>=0; r--){
     if(read_matrix_position_bit(w.mat, r, n_col - 1, num_blocks_row)){ // if there is a syndrome that has to be fixed
-      int c = 0; //TBD: min(r, n_col - 1)
-      while(!read_matrix_position_bit(w.mat, r, c, num_blocks_row) && c < n_col - 1) c++; // find (not yet used) qubit that belongs to tagged syndrome and can be used for its correction
+      int c = (r < n_col - 2 ? r : n_col - 2); // first part must be 0 due to Gaussian elimination
+      while(!read_matrix_position_bit(w.mat, r, c, num_blocks_row) && c < n_col - 1) c++; // find (not yet used) data qubit that can be used for flipping the syndrome
       if(c == n_col - 1) {decodable = false; break;} // syndrome cannot be corrected
       decode[c] = 1;
       for(int r2=r-1; r2>=0; r2--){ // flip other syndromes that are affected
