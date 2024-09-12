@@ -26,17 +26,18 @@ int main(){
         for(int rep=0; rep<num_rep; rep++){
           int num_syndromes = apply_erasure_and_error(&g, p_erasure, p_err);
           ldpc_syndrome_validation_and_decode(&g, num_syndromes); // Algorithm 3
-          bool logical_error_x = 0;
-          bool logical_error_y = 0;
-          for(int c=0; c<g.num_crr_x; c++){
-            logical_error_x ^= g.decode[g.crr_surf_x[c]];
-            logical_error_x ^= g.error[g.crr_surf_x[c]];
+          /* check for logical errors */
+          for(int l=0; l<g.num_logicals; l++){
+            bool logical_error = 0;
+            for(int c=0; c<g.logical_weight[l]; c++){
+              logical_error ^= g.decode[g.logicals[l][c]];
+              logical_error ^= g.error[g.logicals[l][c]];
+            }
+            if(logical_error){
+              cnt_error++;
+              break;
+            }
           }
-          for(int c=0; c<g.num_crr_y; c++){
-            logical_error_y ^= g.decode[g.crr_surf_y[c]];
-            logical_error_y ^= g.error[g.crr_surf_y[c]];
-          }
-          if(logical_error_x || logical_error_y) cnt_error++;
         }
         printf("%f %f %f\n", p_erasure, p_err, (double)cnt_error / (double)num_rep);
       }

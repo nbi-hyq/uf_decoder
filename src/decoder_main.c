@@ -445,11 +445,8 @@ void collect_graph_and_decode(int n_qbt, int n_syndr, uint8_t num_nb_max_qbt, ui
   g.visited = malloc((n_qbt + n_syndr) * sizeof(bool)); // node visited (e.g. in breadth-first traversal)
   g.syndrome = syndrome;
   g.erasure = erasure;
-  g.error = NULL;
   g.parity = malloc((n_qbt + n_syndr) * sizeof(bool)); // parity of syndromes in cluster (has meaning only for root node), 0: even number of syndromes
   g.decode = decode; // decoder output
-  g.crr_surf_x = NULL; // correlation surface 1 (for checking logical error)
-  g.crr_surf_y = NULL; // correlation surface 2 (for checking logical error)
   memset(g.parity, 0, g.n_qbt * sizeof(bool));
   memcpy(g.parity + g.n_qbt, g.syndrome, g.n_syndr * sizeof(bool)); // syndrome and parity of cluster starts as the same thing (when all nodes are isolated)
 
@@ -477,10 +474,7 @@ void collect_graph_and_decode_batch(int n_qbt, int n_syndr, uint8_t num_nb_max_q
   g.num_nb_max_qbt = num_nb_max_qbt; // maximum number of neighbors per data qubit
   g.num_nb_max_syndr = num_nb_max_syndr; // maximum number of neighbors per syndrome
   g.visited = malloc((n_qbt + n_syndr) * sizeof(bool)); // node visited (e.g. in breadth-first traversal)
-  g.error = NULL;
   g.parity = malloc((n_qbt + n_syndr) * sizeof(bool)); // parity of syndromes in cluster (has meaning only for root node), 0: even number of syndromes
-  g.crr_surf_x = NULL; // correlation surface 1 (for checking logical error)
-  g.crr_surf_y = NULL; // correlation surface 2 (for checking logical error)
 
   for(int r=0; r<nrep; r++){
     g.syndrome = syndrome + r*g.n_syndr;

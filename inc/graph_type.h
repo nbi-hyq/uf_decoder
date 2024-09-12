@@ -13,9 +13,9 @@ typedef struct {
   bool* visited;
   bool* decode;
   int* num_qbt;
-  int* crr_surf_x;
-  int* crr_surf_y;
-  int n_qbt, n_syndr, num_edges, num_parity, num_crr_x, num_crr_y;
+  int** logicals;
+  int* logical_weight;
+  int n_qbt, n_syndr, num_edges, num_parity, num_logicals;
   uint8_t num_nb_max_qbt, num_nb_max_syndr;
 } Graph;
 

@@ -17,17 +17,20 @@ Graph get_2d_toric_code(int lsize){
   int n_qbt = 2*lsize*lsize;
   int n_syndrome = lsize*lsize;
   Graph g = new_graph(n_qbt, num_nb_max_qbt, n_syndrome, num_nb_max_syndr);
-  g.num_crr_x = lsize;
-  g.num_crr_y = lsize;
-  g.crr_surf_x = malloc(g.num_crr_x * sizeof(int));
-  g.crr_surf_y = malloc(g.num_crr_y * sizeof(int));
-  int cnt_crr_x = 0;
-  int cnt_crr_y = 0;
+  g.num_logicals = 2;
+  g.logicals = malloc(g.num_logicals * sizeof(int*));
+  g.logical_weight = malloc(g.num_logicals * sizeof(int));
+  for(int i=0; i<g.num_logicals; i++){
+    g.logical_weight[i] = lsize;
+    g.logicals[i] = malloc(g.logical_weight[i] * sizeof(int));
+  }
+  int cnt_x = 0;
+  int cnt_y = 0;
   for(int x=0; x<lsize; x++){
     for(int y=0; y<lsize; y++){
-      /* define correlation surfaces */
-      if(x == 0) g.crr_surf_x[cnt_crr_x++] = 2*(y*lsize+x)+1;
-      if(y == 0) g.crr_surf_y[cnt_crr_y++] = 2*(y*lsize+x)+0;
+      /* define logicals */
+      if(x == 0) g.logicals[0][cnt_x++] = 2*(y*lsize+x)+1;
+      if(y == 0) g.logicals[1][cnt_y++] = 2*(y*lsize+x)+0;
       /* syndromes */
       g.nn_syndr[(y*lsize+x)*num_nb_max_syndr] = 2*(y*lsize+x) + 0;
       g.nn_syndr[(y*lsize+x)*num_nb_max_syndr + 1] = 2*(y*lsize+x) + 1;
@@ -70,22 +73,25 @@ Graph get_2d_triangular_toric_code(int lsize){
   int n_qbt = 3*lsize*lsize;
   int n_syndrome = lsize*lsize;
   Graph g = new_graph(n_qbt, num_nb_max_qbt, n_syndrome, num_nb_max_syndr);
-  g.num_crr_x = 2*lsize;
-  g.num_crr_y = 2*lsize;
-  g.crr_surf_x = malloc(g.num_crr_x * sizeof(int));
-  g.crr_surf_y = malloc(g.num_crr_y * sizeof(int));
-  int cnt_crr_x = 0;
-  int cnt_crr_y = 0;
+  g.num_logicals = 2;
+  g.logicals = malloc(g.num_logicals * sizeof(int*));
+  g.logical_weight = malloc(g.num_logicals * sizeof(int));
+  for(int i=0; i<g.num_logicals; i++){
+    g.logical_weight[i] = 2*lsize;
+    g.logicals[i] = malloc(g.logical_weight[i] * sizeof(int));
+  }
+  int cnt_x = 0;
+  int cnt_y = 0;
   for(int x=0; x<lsize; x++){
     for(int y=0; y<lsize; y++){
-      /* define correlation surfaces */
+      /* define logicals */
       if(x == 0){
-        g.crr_surf_x[cnt_crr_x++] = 3*(y*lsize+x)+0;
-        g.crr_surf_x[cnt_crr_x++] = 3*(y*lsize+x)+2;
+        g.logicals[0][cnt_x++] = 3*(y*lsize+x)+0;
+        g.logicals[0][cnt_x++] = 3*(y*lsize+x)+2;
       }
       if(y == 0){
-        g.crr_surf_y[cnt_crr_y++] = 3*(y*lsize+x)+1;
-        g.crr_surf_y[cnt_crr_y++] = 3*(y*lsize+x)+2;
+        g.logicals[1][cnt_y++] = 3*(y*lsize+x)+1;
+        g.logicals[1][cnt_y++] = 3*(y*lsize+x)+2;
       }
       /* syndromes */
       g.nn_syndr[(y*lsize+x)*num_nb_max_syndr] = 3*(y*lsize+x) + 0;
