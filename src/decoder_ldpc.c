@@ -133,8 +133,8 @@ bool ldpc_decode_cluster(Graph* g, int root){
   uint64_t num_blocks_row = n_col / (8 * sizeof(dtypeBlk)) + 1;
   for(int r = n_row-1; r>=0; r--){
     if(read_matrix_position_bit(w.mat, r, n_col - 1, num_blocks_row)){ // if there is a syndrome that has to be fixed
-      int c = 0; //TBD: min(r, n_col - 1)
-      while(!read_matrix_position_bit(w.mat, r, c, num_blocks_row) && c < n_col - 1) c++; // find (not yet used) qubit that belongs to tagged syndrome and can be used for its correction
+      int c = (r < n_col - 2 ? r : n_col - 2); // first part must be 0 due to Gaussian elimination
+      while(!read_matrix_position_bit(w.mat, r, c, num_blocks_row) && c < n_col - 1) c++; // find (not yet used) data qubit that can be used for flipping the syndrome
       if(c == n_col - 1) {decodable = false; break;} // syndrome cannot be corrected
       decode[c] = 1;
       for(int r2=r-1; r2>=0; r2--){ // flip other syndromes that are affected
@@ -349,11 +349,8 @@ void ldpc_collect_graph_and_decode(int n_qbt, int n_syndr, uint8_t num_nb_max_qb
   g.visited = malloc((n_qbt + n_syndr) * sizeof(bool)); // node visited (e.g. in breadth-first traversal)
   g.syndrome = syndrome;
   g.erasure = erasure;
-  g.error = NULL;
   g.parity = malloc((n_qbt + n_syndr) * sizeof(bool)); // parity of syndromes in cluster (has meaning only for root node), 0: even number of syndromes
   g.decode = decode; // decoder output
-  g.crr_surf_x = NULL; // correlation surface 1 (for checking logical error)
-  g.crr_surf_y = NULL; // correlation surface 2 (for checking logical error)
   memset(g.parity, 0, g.n_qbt * sizeof(bool));
   memcpy(g.parity + g.n_qbt, g.syndrome, g.n_syndr * sizeof(bool)); // syndrome and parity of cluster starts as the same thing (when all nodes are isolated)
 
@@ -380,10 +377,7 @@ void ldpc_collect_graph_and_decode_batch(int n_qbt, int n_syndr, uint8_t num_nb_
   g.num_nb_max_qbt = num_nb_max_qbt; // maximum number of neighbors per data qubit
   g.num_nb_max_syndr = num_nb_max_syndr; // maximum number of neighbors per syndrome
   g.visited = malloc((n_qbt + n_syndr) * sizeof(bool)); // node visited (e.g. in breadth-first traversal)
-  g.error = NULL;
   g.parity = malloc((n_qbt + n_syndr) * sizeof(bool)); // parity of syndromes in cluster (has meaning only for root node), 0: even number of syndromes
-  g.crr_surf_x = NULL; // correlation surface 1 (for checking logical error)
-  g.crr_surf_y = NULL; // correlation surface 2 (for checking logical error)
 
   for(int r=0; r<nrep; r++){
     g.syndrome = syndrome + r*g.n_syndr;

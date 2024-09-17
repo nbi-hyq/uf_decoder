@@ -19,8 +19,9 @@ Graph new_graph(int n_qbt, uint8_t num_nb_max_qbt, int n_syndr, uint8_t num_nb_m
   g.erasure = malloc(n_qbt * sizeof(bool)); // erasure (for node type 1)
   g.error = malloc(n_qbt * sizeof(bool)); // error (for node type 1)
   g.decode = malloc(n_qbt * sizeof(bool)); // decoder output
-  g.crr_surf_x = NULL; // coorelation surafce 1 (for checking logical error)
-  g.crr_surf_y = NULL; // coorelation surafce 2 (for checking logical error)
+  g.logicals = NULL; // pointers to arrays with logicals in sparse representation (qubit indices that belong to logicals)
+  g.logical_weight = NULL; // array with Hamming weights of the different logicals
+  g.num_logicals = 0; // number of different logicals
   g.num_parity = 0; // number of unpaired syndromes
   g.num_nb_max_qbt = num_nb_max_qbt; // maximum number of neighbors per node (of data qubits)
   g.num_nb_max_syndr = num_nb_max_syndr; // maximum number of neighbors per node (of syndromes)
@@ -51,8 +52,9 @@ void free_graph(Graph* g){
   free(g->decode);
   free(g->visited);
   free(g->num_qbt);
-  free(g->crr_surf_x);
-  free(g->crr_surf_y);
+  free(g->logical_weight);
+  for(int i=0; i<g->num_logicals; i++) free(g->logicals[i]);
+  free(g->logicals);
 }
 
 void free_forest(Forest* f){
