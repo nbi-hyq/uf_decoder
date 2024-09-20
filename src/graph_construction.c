@@ -177,30 +177,30 @@ int validate_graph(Graph* g){
 
 /* visualize errors of square lattice 2d toric code */
 int visualize_error(Graph* g, int size){
-  for(int y=0; y<size; y++){
-    for(int x=0; x<size; x++){
-      int n = x + y*size;
-      if(g->syndrome[n]) printf("x");
-      else printf("o");
-      if(!g->erasure[2*n+0]){
-        if(g->error[2*n+0]) printf("e");
-        else printf("-");
-      } else {
-        if(g->error[2*n+0]) printf("E");
-        else printf("=");
-      }
-    }
-    printf("\n");
+  for(int y=size-1; y>=0; y--){
     for(int x=0; x<size; x++){
       int n = x + y*size;
       if(!g->erasure[2*n+1]){
         if(g->error[2*n+1]) printf("e");
-        else printf("|");
+        else printf("-");
       } else {
         if(g->error[2*n+1]) printf("E");
+        else printf("=");
+      }
+      if(g->syndrome[n]) printf("x");
+      else printf("o");
+    }
+    printf("\n");
+    for(int x=0; x<size; x++){
+      printf(" ");
+      int n = x + y*size;
+      if(!g->erasure[2*n+0]){
+        if(g->error[2*n+0]) printf("e");
+        else printf("|");
+      } else {
+        if(g->error[2*n+0]) printf("E");
         else printf("/");
       }
-      printf(" ");
     }
     printf("\n");
   }
@@ -210,37 +210,37 @@ int visualize_error(Graph* g, int size){
 
 /* visualize decoding of square lattice 2d toric code */
 int visualize_decode(Graph* g, int size){
-  for(int y=0; y<size; y++){
-    for(int x=0; x<size; x++){
-      int n = x + y*size;
-      printf("o");
-      if(!g->erasure[2*n]){
-        if(g->error[2*n] && !g->decode[2*n]) printf("e");
-        else if(!g->error[2*n] && g->decode[2*n]) printf("c");
-        else if(g->error[2*n] && g->decode[2*n]) printf("b");
-        else printf("-");
-      } else {
-        if(g->error[2*n] && !g->decode[2*n]) printf("E");
-        else if(!g->error[2*n] && g->decode[2*n]) printf("C");
-        else if(g->error[2*n] && g->decode[2*n]) printf("B");
-        else printf("=");
-      }
-    }
-    printf("\n");
+  for(int y=size-1; y>=0; y--){
     for(int x=0; x<size; x++){
       int n = x + y*size;
       if(!g->erasure[2*n+1]){
         if(g->error[2*n+1] && !g->decode[2*n+1]) printf("e");
         else if(!g->error[2*n+1] && g->decode[2*n+1]) printf("c");
         else if(g->error[2*n+1] && g->decode[2*n+1]) printf("b");
-        else printf("|");
+        else printf("-");
       } else {
         if(g->error[2*n+1] && !g->decode[2*n+1]) printf("E");
         else if(!g->error[2*n+1] && g->decode[2*n+1]) printf("C");
         else if(g->error[2*n+1] && g->decode[2*n+1]) printf("B");
+        else printf("=");
+      }
+      printf("o");
+    }
+    printf("\n");
+    for(int x=0; x<size; x++){
+      printf(" ");
+      int n = x + y*size;
+      if(!g->erasure[2*n]){
+        if(g->error[2*n] && !g->decode[2*n]) printf("e");
+        else if(!g->error[2*n] && g->decode[2*n]) printf("c");
+        else if(g->error[2*n] && g->decode[2*n]) printf("b");
+        else printf("|");
+      } else {
+        if(g->error[2*n] && !g->decode[2*n]) printf("E");
+        else if(!g->error[2*n] && g->decode[2*n]) printf("C");
+        else if(g->error[2*n] && g->decode[2*n]) printf("B");
         else printf("/");
       }
-      printf(" ");
     }
     printf("\n");
   }
@@ -250,23 +250,23 @@ int visualize_decode(Graph* g, int size){
 
 /* visualize syndrome validation forest (for square lattice 2d toric code) */
 int visualize_forest(Forest* f, int size){
-  for(int y=0; y<size; y++){
-    for(int x=0; x<size; x++){
-      int n = x + y*size;
-      if(f->leaf[2*size*size + n] && f->visited[2*size*size + n]) printf("l"); // syndrome
-      else if(f->visited[2*size*size + n]) printf("v");
-      else printf(".");
-      if(f->leaf[2*n] && f->visited[2*n]) printf("l"); // data qubit
-      else if(f->visited[2*n]) printf("v");
-      else printf(".");
-    }
-    printf("\n");
+  for(int y=size-1; y>=0; y--){
     for(int x=0; x<size; x++){
       int n = x + y*size;
       if(f->leaf[2*n+1] && f->visited[2*n+1]) printf("l"); // data qubit
       else if(f->visited[2*n+1]) printf("v");
       else printf(".");
+      if(f->leaf[2*size*size + n] && f->visited[2*size*size + n]) printf("l"); // syndrome
+      else if(f->visited[2*size*size + n]) printf("v");
+      else printf(".");
+    }
+    printf("\n");
+    for(int x=0; x<size; x++){
       printf(" ");
+      int n = x + y*size;
+      if(f->leaf[2*n] && f->visited[2*n]) printf("l"); // data qubit
+      else if(f->visited[2*n]) printf("v");
+      else printf(".");
     }
     printf("\n");
   }
