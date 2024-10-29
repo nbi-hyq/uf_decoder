@@ -1,11 +1,9 @@
 import numpy as np
-import matplotlib.pyplot as plt
-from qldpc import codes
 from py_decoder import UFDecoder
 from some_codes import surface_code_non_periodic, plt_surface_code_non_periodic
 
 
-########### simulate 2d surface code (non-periodic boundaries): ###########
+########### decode and plot 2d surface code (non-periodic boundaries): ###########
 # build H-matrix/Tanner graph
 L = 40
 Hx, Hz = surface_code_non_periodic(L)
