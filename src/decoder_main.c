@@ -374,7 +374,7 @@ Forest get_forest(Graph* g){
 }
 
 /* use the spanning forest to create the decoder output */
-int peel_forest(Forest* f, Graph* g, bool print){
+int peel_forest(Forest* f, Graph* g){
   memset(g->decode, 0, g->n_qbt * sizeof(bool));
   int num_leaf = 0;
   int* l_leaf = malloc(f->nnode*sizeof(int));
@@ -392,7 +392,6 @@ int peel_forest(Forest* f, Graph* g, bool print){
         if(v >= 0) g->syndrome[v - g->n_qbt] = !g->syndrome[v - g->n_qbt]; // flip
         g->syndrome[u - g->n_qbt] = !g->syndrome[u - g->n_qbt]; // flip
         g->decode[l] = 1; // decoder output
-        if(print) printf("%i \n", l); // print decoder output
       }
       if(v < 0){ // v < 0 if l is root
         num_leaf--;
@@ -460,7 +459,7 @@ void collect_graph_and_decode(int n_qbt, int n_syndr, uint8_t num_nb_max_qbt, ui
   for(int i=0; i<g.n_syndr; i++) if(syndrome[i]) num_syndrome++;
   get_even_clusters_bfs_skip_store_root(&g, num_syndrome);
   Forest f = get_forest(&g);
-  peel_forest(&f, &g, false);
+  peel_forest(&f, &g);
   free_forest(&f);
 
   free(g.ptr);
@@ -492,7 +491,7 @@ void collect_graph_and_decode_batch(int n_qbt, int n_syndr, uint8_t num_nb_max_q
     for(int i=0; i<g.n_syndr; i++) if(g.syndrome[i]) num_syndrome++;
     get_even_clusters_bfs_skip_store_root(&g, num_syndrome);
     Forest f = get_forest(&g);
-    peel_forest(&f, &g, false);
+    peel_forest(&f, &g);
     free_forest(&f);
   }
 
