@@ -64,7 +64,51 @@ def plt_2d_square_toric_code(size, error, correction, syndrome, nsyndromes):
             plt.plot([i%size + 0.5], [np.floor(i/size)], '.m')
         elif error[i+nsyndromes] and correction[i+nsyndromes]:
             plt.plot([i%size + 0.5], [np.floor(i/size)], '.g')
+    plt.title('or = non-zero syndrome | .r = error | .m = correction | .g = error+correction')
     plt.show()
+
+
+def surface_code_non_periodic(L):
+	Hx = np.zeros((L*L, L*L*2), dtype=np.uint8)  # primal
+	Hz = np.zeros(((L-1)*(L+1), L*L*2), dtype=np.uint8)  # dual
+	offset = (L+1)*L # offset of vertical edges
+	for y in range(L):
+		for x in range(L):
+			Hx[y*L+x, y*(L+1) + x] = 1
+			Hx[y*L+x, y*(L+1) + x + 1] = 1
+			if y < L-1:
+				Hx[y*L+x, offset + y*L + x] = 1
+			if y > 0:
+				Hx[y*L+x, offset + (y-1)*L + x] = 1
+	return Hx, Hz
+
+
+def plt_surface_code_non_periodic(L, error, correction, syndrome):
+	for y in range(L):
+		for x in range(L):
+			if syndrome[y*L+x]:
+				plt.plot([x], [y], 'or')
+			else:
+				plt.plot([x], [y], 'ok')
+	for y in range(L):
+		for x in range(L+1):
+			if error[y*(L+1)+x] and not correction[y*(L+1)+x]:
+				plt.plot([x - 0.5], [y], '.r')
+			elif not error[y*(L+1)+x] and correction[y*(L+1)+x]:
+				plt.plot([x - 0.5], [y], '.m')
+			elif error[y*(L+1)+x] and correction[y*(L+1)+x]:
+				plt.plot([x - 0.5], [y], '.g')
+	offset = (L+1)*L # offset of vertical edges			
+	for y in range(L-1):
+		for x in range(L):
+			if error[offset + y*L + x] and not correction[offset + y*L + x]:
+				plt.plot([x], [y + 0.5], '.r')
+			elif not error[offset + y*L + x] and correction[offset + y*L + x]:
+				plt.plot([x], [y + 0.5], '.m')
+			elif error[offset + y*L + x] and correction[offset + y*L + x]:
+				plt.plot([x], [y + 0.5], '.g')
+	plt.title('or = non-zero syndrome | .r = error | .m = correction | .g = error+correction')
+	plt.show()
 
 
 def s_power(m, power):
