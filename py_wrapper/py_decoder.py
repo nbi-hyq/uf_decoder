@@ -29,9 +29,9 @@ class UFDecoder:
             print('invalid parity check matrix')
         self.num_nb_max_syndr = cnt.max()  # maximum number of qubits per parity check
         self.num_nb_max_qbt = cnt_qbt.max()  # maximum number of parity checks per qubit
-        self.nn_syndr = np.zeros(self.n_syndr * self.num_nb_max_syndr, dtype=np.int32)
-        self.nn_qbt = np.zeros(self.n_qbt * self.num_nb_max_qbt, dtype=np.int32)
-        self.len_nb = np.zeros((self.n_syndr + self.n_qbt), dtype=np.uint8)
+        self.nn_syndr = np.zeros(self.n_syndr * int(self.num_nb_max_syndr), dtype=np.int32)
+        self.nn_qbt = np.zeros(self.n_qbt * int(self.num_nb_max_qbt), dtype=np.int32)
+        self.len_nb = np.zeros(self.n_syndr + self.n_qbt, dtype=np.uint8)
         self.correction = np.zeros(self.n_qbt, dtype=np.uint8)
         self.h_matrix_to_tanner_graph()
         self.decode_lib = ctypes.cdll.LoadLibrary('../build/libSpeedDecoder.so')
