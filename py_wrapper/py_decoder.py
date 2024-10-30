@@ -37,8 +37,8 @@ class UFDecoder:
         self.decode_lib = ctypes.cdll.LoadLibrary('../build/libSpeedDecoder.so')
 
     def add_from_h_row_and_col(self, r, c):
-        self.nn_syndr[self.num_nb_max_syndr * r + self.len_nb[r + self.n_qbt]] = c
-        self.nn_qbt[self.num_nb_max_qbt * c + self.len_nb[c]] = r + self.n_qbt
+        self.nn_syndr[r * self.num_nb_max_syndr + self.len_nb[r + self.n_qbt]] = c
+        self.nn_qbt[c * self.num_nb_max_qbt + self.len_nb[c]] = r + self.n_qbt
         self.len_nb[r + self.n_qbt] += 1
         self.len_nb[c] += 1
 
