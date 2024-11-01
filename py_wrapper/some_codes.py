@@ -68,44 +68,46 @@ def plt_2d_square_toric_code(size, error, correction, syndrome, nsyndromes):
     plt.show()
 
 
+# square lattice surface code with rough boundaries at x=0 and x=L-1, L: code distance (same for X- and Z-type errors)
+# (primal and dual have the same parity check matrix, but rotated by 90°)
 def surface_code_non_periodic(L):
-	Hx = np.zeros((L*L, L*L*2), dtype=np.uint8)  # primal
-	Hz = np.zeros(((L-1)*(L+1), L*L*2), dtype=np.uint8)  # dual
-	offset = (L+1)*L # offset of vertical edges
+	H = np.zeros((L*(L-1), 2*L*L*2 - 2*L + 1), dtype=np.uint8)  # primal or dual
+	offset = L**2  # offset of vertical edges
 	for y in range(L):
-		for x in range(L):
-			Hx[y*L+x, y*(L+1) + x] = 1
-			Hx[y*L+x, y*(L+1) + x + 1] = 1
+		for x in range(L-1):
+			H[y*(L-1)+x, y*L + x] = 1
+			H[y*(L-1)+x, y*L + x + 1] = 1
 			if y < L-1:
-				Hx[y*L+x, offset + y*L + x] = 1
+				H[y*(L-1)+x, offset + y*(L-1) + x] = 1
 			if y > 0:
-				Hx[y*L+x, offset + (y-1)*L + x] = 1
-	return Hx, Hz
+				H[y*(L-1)+x, offset + (y-1)*(L-1) + x] = 1
+	return H
 
 
+# plot square lattice surface code with rough boundaries
 def plt_surface_code_non_periodic(L, error, correction, syndrome):
 	for y in range(L):
-		for x in range(L):
-			if syndrome[y*L+x]:
+		for x in range(L-1):
+			if syndrome[y*(L-1)+x]:
 				plt.plot([x], [y], 'or')
 			else:
 				plt.plot([x], [y], 'ok')
 	for y in range(L):
-		for x in range(L+1):
-			if error[y*(L+1)+x] and not correction[y*(L+1)+x]:
-				plt.plot([x - 0.5], [y], '.r')
-			elif not error[y*(L+1)+x] and correction[y*(L+1)+x]:
-				plt.plot([x - 0.5], [y], '.m')
-			elif error[y*(L+1)+x] and correction[y*(L+1)+x]:
-				plt.plot([x - 0.5], [y], '.g')
-	offset = (L+1)*L # offset of vertical edges			
-	for y in range(L-1):
 		for x in range(L):
-			if error[offset + y*L + x] and not correction[offset + y*L + x]:
+			if error[y*L+x] and not correction[y*L+x]:
+				plt.plot([x - 0.5], [y], '.r')
+			elif not error[y*L+x] and correction[y*L+x]:
+				plt.plot([x - 0.5], [y], '.m')
+			elif error[y*L+x] and correction[y*L+x]:
+				plt.plot([x - 0.5], [y], '.g')
+	offset = L**2  # offset of vertical edges
+	for y in range(L-1):
+		for x in range(L-1):
+			if error[offset + y*(L-1) + x] and not correction[offset + y*(L-1) + x]:
 				plt.plot([x], [y + 0.5], '.r')
-			elif not error[offset + y*L + x] and correction[offset + y*L + x]:
+			elif not error[offset + y*(L-1) + x] and correction[offset + y*(L-1) + x]:
 				plt.plot([x], [y + 0.5], '.m')
-			elif error[offset + y*L + x] and correction[offset + y*L + x]:
+			elif error[offset + y*(L-1) + x] and correction[offset + y*(L-1) + x]:
 				plt.plot([x], [y + 0.5], '.g')
 	plt.title('or = non-zero syndrome | .r = error | .m = correction | .g = error+correction')
 	plt.show()
