@@ -6,7 +6,7 @@ from some_codes import surface_code_non_periodic, plt_surface_code_non_periodic
 ########### decode and plot 2d surface code (non-periodic boundaries): ###########
 # build H-matrix/Tanner graph
 L = 40
-H = surface_code_non_periodic(L)
+H, _ = surface_code_non_periodic(L)
 g = UFDecoder(H)  # look at H-matrix with rough boundaries
 
 # apply noise and get syndromes

@@ -10,7 +10,7 @@ class TestDecodeSurfaceCode(unittest.TestCase):
     def test_decoding(self, l_l, l_p_err, l_p_ers):
         for L in l_l:
             # build H-matrix/Tanner graph
-            H = surface_code_non_periodic(L)
+            H, _ = surface_code_non_periodic(L)
             g = UFDecoder(H)  # look at H-matrix with rough boundaries
             for p_erasure in l_p_ers:
                 for p_err in l_p_err:

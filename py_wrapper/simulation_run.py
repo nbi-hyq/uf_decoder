@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 from py_decoder import UFDecoder
-from some_codes import toric_code_x_logicals, toric_code_x_stabilisers
+from some_codes import toric_code
 
 '''
 1) Apply uniform noise (Pauli errors with rate: p_err, erasures with rate: p_erase)
@@ -115,8 +115,7 @@ if __name__ == "__main__":
     a_time = np.zeros((len(l_L), len(l_p)), dtype=np.double)
     for i_L, L in enumerate(l_L):
         print('L =', L)
-        Hx = toric_code_x_stabilisers(L)
-        logX = toric_code_x_logicals(L)
+        Hx, logX = toric_code(L)
         decoder = UFDecoder(Hx)
         for i_p, p in enumerate(l_p):
             if batch_evaluate:
@@ -144,8 +143,7 @@ if __name__ == "__main__":
     a_error = np.zeros((len(l_L), len(l_p)), dtype=np.double)
     for i_L, L in enumerate(l_L):
         print('L =', L)
-        Hx = toric_code_x_stabilisers(L)
-        logX = toric_code_x_logicals(L)
+        Hx, logX = toric_code(L)
         decoder = UFDecoder(Hx)
         for i_p, p in enumerate(l_p):
             if batch_evaluate:
@@ -172,8 +170,7 @@ if __name__ == "__main__":
     a_error = np.zeros((len(l_L), len(l_p), len(l_ers)), dtype=np.double)
     for i_L, L in enumerate(l_L):
         print('L =', L)
-        Hx = toric_code_x_stabilisers(L)
-        logX = toric_code_x_logicals(L)
+        Hx, logX = toric_code(L)
         decoder = UFDecoder(Hx)
         for i_p, p in enumerate(l_p):
             for i_e, e in enumerate(l_ers):

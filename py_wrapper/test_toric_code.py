@@ -1,7 +1,7 @@
 import numpy as np
 import unittest
 from py_decoder import UFDecoder
-from some_codes import toric_code_x_stabilisers
+from some_codes import toric_code
 
 
 # test decoding of square-lattice toric code (periodic boundaries)
@@ -10,7 +10,7 @@ class TestDecodeToricCode(unittest.TestCase):
     def test_decoding(self, l_l, l_p_err, l_p_ers):
         for L in l_l:
             # build H-matrix/Tanner graph
-            H = toric_code_x_stabilisers(L)
+            H, _ = toric_code(L)
             g = UFDecoder(H)
             for p_erasure in l_p_ers:
                 for p_err in l_p_err:

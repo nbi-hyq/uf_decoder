@@ -1,12 +1,12 @@
 import numpy as np
 from py_decoder import UFDecoder
-from some_codes import toric_code_x_stabilisers, plt_2d_square_toric_code
+from some_codes import toric_code, plt_2d_square_toric_code
 
 
 ########### decode and plot 2d toric code (periodic boundaries): ###########
 # build H-matrix/Tanner graph
 L = 40
-H = toric_code_x_stabilisers(L)
+H, _ = toric_code(L)
 g = UFDecoder(H)
 
 # apply noise and get syndromes

@@ -13,7 +13,7 @@ def repetition_code(n):
     return csc_matrix((data, (row_ind, col_ind)))
 
 
-def toric_code_x_stabilisers(L):
+def toric_code(L):
     """
     Sparse check matrix for the X stabilisers of a toric code with
     lattice size L, constructed as the hypergraph product of
@@ -26,10 +26,7 @@ def toric_code_x_stabilisers(L):
     )
     H.data = H.data % 2
     H.eliminate_zeros()
-    return H
 
-
-def toric_code_x_logicals(L):
     """
     Sparse binary matrix with each row corresponding to an X logical operator
     of a toric code with lattice size L. Constructed from the
@@ -41,7 +38,8 @@ def toric_code_x_logicals(L):
     x_logicals = block_diag([kron(H1, H0), kron(H0, H1)])
     x_logicals.data = x_logicals.data % 2
     x_logicals.eliminate_zeros()
-    return x_logicals
+
+    return H, x_logicals
 
 
 def plt_2d_square_toric_code(size, error, correction, syndrome, nsyndromes):
@@ -72,6 +70,9 @@ def plt_2d_square_toric_code(size, error, correction, syndrome, nsyndromes):
 # (primal and dual have the same parity check matrix, but rotated by 90°)
 def surface_code_non_periodic(L):
 	H = np.zeros((L*(L-1), 2*L*L*2 - 2*L + 1), dtype=np.uint8)  # primal or dual
+	logical = np.zeros(2*L*L*2 - 2*L + 1, dtype=np.uint8)
+	for y in range(L):
+	    logical[y*L] = 1
 	offset = L**2  # offset of vertical edges
 	for y in range(L):
 		for x in range(L-1):
@@ -81,7 +82,7 @@ def surface_code_non_periodic(L):
 				H[y*(L-1)+x, offset + y*(L-1) + x] = 1
 			if y > 0:
 				H[y*(L-1)+x, offset + (y-1)*(L-1) + x] = 1
-	return H
+	return H, logical
 
 
 # plot square lattice surface code with rough boundaries
