@@ -82,12 +82,12 @@ class UFDecoder:
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
     import time
-    from some_codes import toric_code_x_stabilisers, plt_2d_square_toric_code, get_bb
+    from some_codes import toric_code, plt_2d_square_toric_code, get_bb
 
     ########### 2d surface code: ###########
     # build H-matrix/Tanner graph
     L = 40
-    H = toric_code_x_stabilisers(L)
+    H, _ = toric_code(L)
     g = UFDecoder(H)
 
     # apply noise and get syndromes
@@ -134,4 +134,4 @@ if __name__ == '__main__':
             err_plus_correction = np.logical_xor(error, g.correction)
             syndrome = g.h @ err_plus_correction % 2
             print('sum syndrome: ', np.sum(syndrome))
- 
+

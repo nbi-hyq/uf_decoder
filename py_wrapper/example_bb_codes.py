@@ -37,7 +37,7 @@ for i, n_qbt in enumerate(n_list):
         num_err = num_decoding_failures_batch(uf_decoder, lz, p, erasure_rate, num_trials, topological=False)
         l_logical_error_rate.append(num_err / num_trials)
     plt.loglog(a_pauli_error_rate, l_logical_error_rate, 'o-')
-plt.loglog(a_pauli_error_rate, a_pauli_error_rate, color='gray')
+    plt.loglog(a_pauli_error_rate, 1 - (1 - a_pauli_error_rate)**k_list[i], color='gray')
 plt.xlabel('Pauli error rate')
 plt.ylabel('logical error rate')
 plt.title('erasure rate = ' + str(erasure_rate))

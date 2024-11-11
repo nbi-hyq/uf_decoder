@@ -9,9 +9,8 @@ class TestDecodeToricCode(unittest.TestCase):
     # test that error + correction gives zeros syndromes
     def test_decoding(self, l_l, l_p_err, l_p_ers):
         for L in l_l:
-            # build H-matrix/Tanner graph
-            H, _ = toric_code(L)
-            g = UFDecoder(H)
+            H, _ = toric_code(L)  # create parity-check matrix
+            g = UFDecoder(H)  # set up decoder
             for p_erasure in l_p_ers:
                 for p_err in l_p_err:
                     # apply noise and get syndromes

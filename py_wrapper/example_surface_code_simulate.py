@@ -13,7 +13,7 @@ a_pauli_error_rate = np.linspace(0.03, 0.12, num=20)  # Pauli error rates
 
 # 2d surface code with non-periodic boundaries
 for i, l in enumerate(l_len):
-    H, logical = surface_code_non_periodic(l)  # build H-matrix/Tanner graph
+    H, logical = surface_code_non_periodic(l)  # create parity-check matrix and logicals
     uf_decoder = UFDecoder(H)  # setup decoder
     l_logical_error_rate = []
     for p_err in a_pauli_error_rate:
@@ -23,7 +23,7 @@ for i, l in enumerate(l_len):
 
 # 2d toric code with periodic boundaries
 for i, l in enumerate(l_len):
-    H, logical = toric_code(l)  # build H-matrix/Tanner graph
+    H, logical = toric_code(l)  # create parity-check matrix and logicals
     uf_decoder = UFDecoder(H)  # setup decoder
     l_logical_error_rate = []
     for p_err in a_pauli_error_rate:
