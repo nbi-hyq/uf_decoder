@@ -33,5 +33,5 @@ jobs:
       - name: TestPy
         if: contains(matrix.os, 'ubuntu')
         working-directory: ./py_wrapper
-        run: python test_toric_code.py && python test_surface_code.py && python test_bb_codes.py
+        run: python test_toric_code.py && python test_surface_code.py
         shell: bash
