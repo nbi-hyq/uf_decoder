@@ -25,7 +25,7 @@ int main(){
       int num_syndromes = apply_erasure_and_error(&g, p_erasure, p_err);
       get_even_clusters_bfs_skip_store_root(&g, num_syndromes); // Algorithm 2
       Forest f = get_forest(&g);
-      peel_forest(&f, &g, false);
+      peel_forest(&f, &g);
       int c = check_correction(&g);
       printf("%f %i\n", p_err, c);
       r |= c;

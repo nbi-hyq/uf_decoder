@@ -159,7 +159,7 @@ bool ldpc_decode_cluster(Graph* g, int root){
 /* merge two graph fragments in g->ptr representation, return new root node index, update validity of merged cluster
    (assumes for parity update that r1 is cluster from where stuff is grown (assumed to be invalid until update at end) */
 static int merge_root(Graph* g, int r1, int r2){
-  if (g->parity[r2]) g->num_parity -= 1;
+  if (g->parity[r2]) g->num_invalid -= 1;
   if (g->ptr[r1] > g->ptr[r2]){
     g->num_qbt[r2] += g->num_qbt[r1]; // add number of data qubits in smaller cluster to bigger cluster
     g->ptr[r2] += g->ptr[r1]; // add size of smaller component to bigger one
@@ -176,7 +176,7 @@ static int merge_root(Graph* g, int r1, int r2){
 /* after growing cluster, check again if it is valid */
 static void update_cluster_validity(Graph* g, int root){
   g->parity[root] = !ldpc_decode_cluster(g, root);
-  if(!g->parity[root]) g->num_parity -= 1;
+  if(!g->parity[root]) g->num_invalid -= 1;
 }
 
 /* used for storing skipped nodes in linked list connected to cluster root */
@@ -229,14 +229,14 @@ void ldpc_syndrome_validation_and_decode(Graph* g, int num_syndromes){
     g->ptr[i] = -1; // all isolated nodes in beginning
     g->num_qbt[i] = 0; // number of data qubits in cluster
   }
-  g->num_parity = num_syndromes; // num_parity has here the meaning of number of invalid clusters
+  g->num_invalid = num_syndromes;
   int bf_pos = 0; // current position for breadth-first graph traversal
 
   /* grow erasures first by one step (helps as one is done when errors happen only on erased qubits) */
   while (bf_pos < num_erasure){
     int n = bf_list[bf_pos];
     int r_n = findroot(g, n);
-    if (!g->parity[r_n]) g->num_parity += 1; // if start from valid cluster, compensate g->num_parity -= 1 in update_cluster_validity
+    if (!g->parity[r_n]) g->num_invalid += 1; // if start from valid cluster, compensate g->num_invalid -= 1 in update_cluster_validity
     uint8_t num_nb_max;
     int* nn;
     int idx_arry;
@@ -263,7 +263,7 @@ void ldpc_syndrome_validation_and_decode(Graph* g, int num_syndromes){
   }
 
   /* grow clusters with method derived from breadth-first traversal (grow here in double steps such that the cluster boundary is always syndrome checks) */
-  while(g->num_parity > 0){
+  while(g->num_invalid > 0){
     int n = bf_list[bf_pos];
     int r_n = findroot(g, n);
     if(g->parity[r_n]){ // only grow invalid cluster

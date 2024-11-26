@@ -15,7 +15,7 @@ typedef struct {
   int* num_qbt;
   int** logicals;
   int* logical_weight;
-  int n_qbt, n_syndr, num_edges, num_parity, num_logicals;
+  int n_qbt, n_syndr, num_edges, num_invalid, num_logicals;
   uint8_t num_nb_max_qbt, num_nb_max_syndr;
 } Graph;
 

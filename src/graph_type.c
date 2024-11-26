@@ -22,7 +22,7 @@ Graph new_graph(int n_qbt, uint8_t num_nb_max_qbt, int n_syndr, uint8_t num_nb_m
   g.logicals = NULL; // pointers to arrays with logicals in sparse representation (qubit indices that belong to logicals)
   g.logical_weight = NULL; // array with Hamming weights of the different logicals
   g.num_logicals = 0; // number of different logicals
-  g.num_parity = 0; // number of unpaired syndromes
+  g.num_invalid = 0; // number of invalid clusters
   g.num_nb_max_qbt = num_nb_max_qbt; // maximum number of neighbors per node (of data qubits)
   g.num_nb_max_syndr = num_nb_max_syndr; // maximum number of neighbors per node (of syndromes)
   g.n_qbt = n_qbt; // number of data qubits

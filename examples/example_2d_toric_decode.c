@@ -24,7 +24,7 @@ int main(){
     Forest f = get_forest(&g);
     visualize_error(&g, lsize);
     visualize_forest(&f, lsize);
-    peel_forest(&f, &g, true);
+    peel_forest(&f, &g);
     visualize_decode(&g, lsize);
     free_graph(&g);
     free_forest(&f);

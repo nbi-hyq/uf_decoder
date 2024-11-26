@@ -20,14 +20,15 @@ static int findroot(Graph* g, int i){
 
 /* merge two graph fragments in g->ptr representation, return new root node index, update cluster parity */
 static int merge_root(Graph* g, int r1, int r2){
-  if (g->parity[r1] && g->parity[r2]) g->num_parity -= 2;
+  if (g->parity[r1] && g->parity[r2]) g->num_invalid -= 2;
+  else if ((g->len_nb[r2] == 1 && g->parity[r1]) || (g->len_nb[r1] == 1 && g->parity[r2])) g->num_invalid -= 1; // one is boundary (so valid), check g->parity is not needed if only invalid clusters are grown
   if (g->ptr[r1] > g->ptr[r2]){
-    g->parity[r2] = (g->parity[r1] + g->parity[r2]) % 2;
+    g->parity[r2] = (g->parity[r1] != g->parity[r2]) && (g->len_nb[r1] > 1) && (g->len_nb[r2] > 1); // only invalid if even parity and not connected to boundary
     g->ptr[r2] += g->ptr[r1]; // add size of smaller component to bigger one
     g->ptr[r1] = r2; // attach component with root r1 to larger component with root r2
     r1 = r2; // update root
   } else {
-    g->parity[r1] = (g->parity[r1] + g->parity[r2]) % 2;
+    g->parity[r1] = (g->parity[r1] != g->parity[r2]) && (g->len_nb[r1] > 1) && (g->len_nb[r2] > 1); // only invalid if even parity and not connected to boundary
     g->ptr[r1] += g->ptr[r2]; // add size of smaller component to bigger one
     g->ptr[r2] = r1; // attach component with root r2 to larger component with root r1
   }
@@ -73,7 +74,8 @@ int get_even_clusters_bfs(Graph* g, int num_syndromes){
       bfs_list[bfs_next++] = i; // seed
       g->visited[i] = true; // mark as visited to avoid adding to bfs_list twice
     }
-    g->ptr[i] = -1; // all isolated nodes in beginning
+    if(g->len_nb[i] > 1) g->ptr[i] = -1; // all isolated nodes in beginning
+    else g->ptr[i] = -(g->n_qbt + g->n_syndr); // this way everything gets rooted at the boundary
   }
   for(int i=0; i < g->n_syndr; i++){
     if (g->syndrome[i]){ // syndromes 2nd
@@ -82,9 +84,9 @@ int get_even_clusters_bfs(Graph* g, int num_syndromes){
     }
     g->ptr[i + g->n_qbt] = -1; // all isolated nodes in beginning
   }
-  g->num_parity = num_syndromes; // number of unpaired syndromes
+  g->num_invalid = num_syndromes; // number of unpaired syndromes
   int bfs_pos = 0; // current position for breadth-first graph traversal
-  while(g->num_parity > 0){
+  while(g->num_invalid > 0){
     int n = bfs_list[bfs_pos];
     int r_n = findroot(g, n);
     uint8_t num_nb_max;
@@ -127,7 +129,8 @@ int get_even_clusters_bfs_skip(Graph* g, int num_syndromes){
       bfs_list[bfs_next++] = i; // seed
       g->visited[i] = true; // mark as visited to avoid adding to bfs_list twice
     }
-    g->ptr[i] = -1; // all isolated nodes in beginning
+    if(g->len_nb[i] > 1) g->ptr[i] = -1; // all isolated nodes in beginning
+    else g->ptr[i] = -(g->n_qbt + g->n_syndr); // this way everything gets rooted at the boundary
   }
   int num_erasure = bfs_next;
   for(int i=0; i < g->n_syndr; i++){
@@ -137,9 +140,9 @@ int get_even_clusters_bfs_skip(Graph* g, int num_syndromes){
     }
     g->ptr[i + g->n_qbt] = -1; // all isolated nodes in beginning
   }
-  g->num_parity = num_syndromes; // number of unpaired syndromes
+  g->num_invalid = num_syndromes; // number of unpaired syndromes
   int bfs_pos = 0; // current position for breadth-first graph traversal
-  while(g->num_parity > 0){
+  while(g->num_invalid > 0){
     if(bfs_pos == bfs_next){ // rare case that a skipped element is still needed
       free(bfs_list);
       bfs_list = bfs_list_skipped;
@@ -221,7 +224,8 @@ int get_even_clusters_bfs_skip_store_root(Graph* g, int num_syndromes){
       bfs_list[bfs_next++] = i; // seed
       g->visited[i] = true; // mark as visited to avoid adding to bfs_list twice
     }
-    g->ptr[i] = -1; // all isolated nodes in beginning
+    if(g->len_nb[i] > 1) g->ptr[i] = -1; // all isolated nodes in beginning
+    else g->ptr[i] = -(g->n_qbt + g->n_syndr); // this way everything gets rooted at the boundary
   }
   int num_erasure = bfs_next;
   for(int i=0; i < g->n_syndr; i++){
@@ -231,7 +235,7 @@ int get_even_clusters_bfs_skip_store_root(Graph* g, int num_syndromes){
     }
     g->ptr[i + g->n_qbt] = -1; // all isolated nodes in beginning
   }
-  g->num_parity = num_syndromes; // number of unpaired syndromes
+  g->num_invalid = num_syndromes; // number of unpaired syndromes
   int bfs_pos = 0; // current position for breadth-first graph traversal
 
   /* grow erasures first by one step (helps as one is done when errors happen only on erased qubits) */
@@ -263,7 +267,7 @@ int get_even_clusters_bfs_skip_store_root(Graph* g, int num_syndromes){
   }
 
   /* grow clusters with method derived from breadth-first traversal */
-  while(g->num_parity > 0){
+  while(g->num_invalid > 0){
     int n = bfs_list[bfs_pos];
     int r_n = findroot(g, n);
     if(g->parity[r_n]){ // only grow odd cluster
@@ -332,12 +336,12 @@ Forest get_forest(Graph* g){
   for(int i=0; i<f.nnode; i++) f.parent[i] = -1; // -1 indicated tree root
   int* l_bfs = malloc(f.nnode * sizeof(int)); // another time breadth-first traversal to build forest
   for(int n=0; n<f.nnode; n++){
-    if(g->visited[n] && !f.visited[n]){ // n is root point of tree
+    if(g->visited[n] && !f.visited[n]){
       int r_n = findroot(g, n);
       int bfs_next = 1; // next free position
       int bfs_pos = 0; // current position for breadth-first graph traversal
-      l_bfs[0] = n;
-      f.visited[n] = 1;
+      l_bfs[0] = r_n; // make root of cluster from syndrome validation the root of the tree for peeling
+      f.visited[r_n] = 1;
       while(bfs_pos < bfs_next){ // crawl cluster breadth-first to create spanning tree
         int m = l_bfs[bfs_pos];
         uint8_t num_nb_max;
@@ -370,7 +374,7 @@ Forest get_forest(Graph* g){
 }
 
 /* use the spanning forest to create the decoder output */
-int peel_forest(Forest* f, Graph* g, bool print){
+int peel_forest(Forest* f, Graph* g){
   memset(g->decode, 0, g->n_qbt * sizeof(bool));
   int num_leaf = 0;
   int* l_leaf = malloc(f->nnode*sizeof(int));
@@ -380,15 +384,16 @@ int peel_forest(Forest* f, Graph* g, bool print){
     f->visited[l] = 0; // unvisit
     if(l < g->n_qbt){ // leaf is data qubit
       int v = f->parent[l];
-      int u = (g->nn_qbt[l*g->num_nb_max_qbt+0] != v ? g->nn_qbt[l*g->num_nb_max_qbt+0] : g->nn_qbt[l*g->num_nb_max_qbt+1]); // pendent vertex
-      int r = findroot(g, l);
-      if(g->syndrome[u - g->n_qbt] && findroot(g, u) == r){ // flip pendent vertex if it belongs to component
+      int u; // pendant vertex
+      if(g->nn_qbt[l*g->num_nb_max_qbt+0] != v) u = g->nn_qbt[l*g->num_nb_max_qbt+0];
+      else if(g->len_nb[l] > 1) u = g->nn_qbt[l*g->num_nb_max_qbt+1];
+      else u = -1; // no pendant vertex (can happen if l is at boundary)
+      if(u>0 && g->syndrome[u - g->n_qbt] && findroot(g, u) == findroot(g, l)){ // flip nonzero syndrome at pendant vertex if it belongs to component
         if(v >= 0) g->syndrome[v - g->n_qbt] = !g->syndrome[v - g->n_qbt]; // flip
         g->syndrome[u - g->n_qbt] = !g->syndrome[u - g->n_qbt]; // flip
         g->decode[l] = 1; // decoder output
-        if(print) printf("%i \n", l); // print decoder output
       }
-      if(v < 0){ // v < 0 can happen if l is erased and root
+      if(v < 0){ // v < 0 if l is root
         num_leaf--;
         continue;
       }
@@ -406,7 +411,7 @@ int peel_forest(Forest* f, Graph* g, bool print){
       int p = f->parent[l];
       if(p >= 0){ // there is a parent (l is no root)
         if(f->parent[p] >= 0) l_leaf[num_leaf-1] = p; // parent is not a root
-        else if(!f->visited[g->nn_qbt[p*g->num_nb_max_qbt+0]] && !f->visited[g->nn_qbt[p*g->num_nb_max_qbt+1]]) l_leaf[num_leaf-1] = p; // parent is root but last node in cluster
+        else if(!f->visited[g->nn_qbt[p*g->num_nb_max_qbt+0]] && (g->len_nb[p]<2 || !f->visited[g->nn_qbt[p*g->num_nb_max_qbt+1]])) l_leaf[num_leaf-1] = p; // p is root but last node in cluster (g->len_nb[p]<2: no 2nd neighbor exists for boundary node)
         else num_leaf--; // don't make root node leaf before it is last node in cluster
       }
       else num_leaf--;
@@ -416,7 +421,7 @@ int peel_forest(Forest* f, Graph* g, bool print){
   return 0;
 }
 
-/* check if the decoding has worked in the sense that no syndromes are left */
+/* check if the decoding has worked in the sense that no syndromes are left (only works if every data qubit has exactly two neighbors) */
 int check_correction(Graph* g){
   memset(g->syndrome, 0, g->n_syndr * sizeof(bool));
   int num_syndromes = 0;
@@ -454,7 +459,7 @@ void collect_graph_and_decode(int n_qbt, int n_syndr, uint8_t num_nb_max_qbt, ui
   for(int i=0; i<g.n_syndr; i++) if(syndrome[i]) num_syndrome++;
   get_even_clusters_bfs_skip_store_root(&g, num_syndrome);
   Forest f = get_forest(&g);
-  peel_forest(&f, &g, false);
+  peel_forest(&f, &g);
   free_forest(&f);
 
   free(g.ptr);
@@ -486,7 +491,7 @@ void collect_graph_and_decode_batch(int n_qbt, int n_syndr, uint8_t num_nb_max_q
     for(int i=0; i<g.n_syndr; i++) if(g.syndrome[i]) num_syndrome++;
     get_even_clusters_bfs_skip_store_root(&g, num_syndrome);
     Forest f = get_forest(&g);
-    peel_forest(&f, &g, false);
+    peel_forest(&f, &g);
     free_forest(&f);
   }
 

@@ -29,16 +29,16 @@ class UFDecoder:
             print('invalid parity check matrix')
         self.num_nb_max_syndr = cnt.max()  # maximum number of qubits per parity check
         self.num_nb_max_qbt = cnt_qbt.max()  # maximum number of parity checks per qubit
-        self.nn_syndr = np.zeros(self.n_syndr * self.num_nb_max_syndr, dtype=np.int32)
-        self.nn_qbt = np.zeros(self.n_qbt * self.num_nb_max_qbt, dtype=np.int32)
-        self.len_nb = np.zeros((self.n_syndr + self.n_qbt), dtype=np.uint8)
+        self.nn_syndr = np.zeros(self.n_syndr * int(self.num_nb_max_syndr), dtype=np.int32)
+        self.nn_qbt = np.zeros(self.n_qbt * int(self.num_nb_max_qbt), dtype=np.int32)
+        self.len_nb = np.zeros(self.n_syndr + self.n_qbt, dtype=np.uint8)
         self.correction = np.zeros(self.n_qbt, dtype=np.uint8)
         self.h_matrix_to_tanner_graph()
         self.decode_lib = ctypes.cdll.LoadLibrary('../build/libSpeedDecoder.so')
 
     def add_from_h_row_and_col(self, r, c):
-        self.nn_syndr[self.num_nb_max_syndr * r + self.len_nb[r + self.n_qbt]] = c
-        self.nn_qbt[self.num_nb_max_qbt * c + self.len_nb[c]] = r + self.n_qbt
+        self.nn_syndr[r * int(self.num_nb_max_syndr) + int(self.len_nb[r + self.n_qbt])] = c
+        self.nn_qbt[c * int(self.num_nb_max_qbt) + int(self.len_nb[c])] = r + self.n_qbt
         self.len_nb[r + self.n_qbt] += 1
         self.len_nb[c] += 1
 
@@ -82,12 +82,12 @@ class UFDecoder:
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
     import time
-    from some_codes import toric_code_x_stabilisers, plt_2d_square_toric_code, get_bb
+    from some_codes import toric_code, plt_2d_square_toric_code, get_bb
 
     ########### 2d surface code: ###########
     # build H-matrix/Tanner graph
     L = 40
-    H = toric_code_x_stabilisers(L)
+    H, _ = toric_code(L)
     g = UFDecoder(H)
 
     # apply noise and get syndromes
@@ -134,4 +134,4 @@ if __name__ == '__main__':
             err_plus_correction = np.logical_xor(error, g.correction)
             syndrome = g.h @ err_plus_correction % 2
             print('sum syndrome: ', np.sum(syndrome))
- 
+

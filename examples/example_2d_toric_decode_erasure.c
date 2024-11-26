@@ -25,7 +25,7 @@ int main(){
         /* apply decoding algorithm */
         get_even_clusters_bfs_skip(&g, num_syndromes); // Algorithm 4
         Forest f = get_forest(&g);
-        peel_forest(&f, &g, false);
+        peel_forest(&f, &g);
         free_forest(&f);
         /* check for logical errors */
         for(int l=0; l<g.num_logicals; l++){

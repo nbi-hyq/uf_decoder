@@ -13,7 +13,7 @@ def repetition_code(n):
     return csc_matrix((data, (row_ind, col_ind)))
 
 
-def toric_code_x_stabilisers(L):
+def toric_code(L):
     """
     Sparse check matrix for the X stabilisers of a toric code with
     lattice size L, constructed as the hypergraph product of
@@ -26,10 +26,7 @@ def toric_code_x_stabilisers(L):
     )
     H.data = H.data % 2
     H.eliminate_zeros()
-    return H
 
-
-def toric_code_x_logicals(L):
     """
     Sparse binary matrix with each row corresponding to an X logical operator
     of a toric code with lattice size L. Constructed from the
@@ -41,7 +38,8 @@ def toric_code_x_logicals(L):
     x_logicals = block_diag([kron(H1, H0), kron(H0, H1)])
     x_logicals.data = x_logicals.data % 2
     x_logicals.eliminate_zeros()
-    return x_logicals
+
+    return H, x_logicals
 
 
 def plt_2d_square_toric_code(size, error, correction, syndrome, nsyndromes):
@@ -64,7 +62,56 @@ def plt_2d_square_toric_code(size, error, correction, syndrome, nsyndromes):
             plt.plot([i%size + 0.5], [np.floor(i/size)], '.m')
         elif error[i+nsyndromes] and correction[i+nsyndromes]:
             plt.plot([i%size + 0.5], [np.floor(i/size)], '.g')
+    plt.title('or = non-zero syndrome | .r = error | .m = correction | .g = error+correction')
     plt.show()
+
+
+# square lattice surface code with rough boundaries at x=0 and x=L-1, L: code distance (same for X- and Z-type errors)
+# (primal and dual have the same parity check matrix, but rotated by 90°)
+def surface_code_non_periodic(L):
+	H = np.zeros((L*(L-1), 2*L*L*2 - 2*L + 1), dtype=np.uint8)  # primal or dual
+	logical = np.zeros(2*L*L*2 - 2*L + 1, dtype=np.uint8)
+	for y in range(L):
+	    logical[y*L] = 1
+	offset = L**2  # offset of vertical edges
+	for y in range(L):
+		for x in range(L-1):
+			H[y*(L-1)+x, y*L + x] = 1
+			H[y*(L-1)+x, y*L + x + 1] = 1
+			if y < L-1:
+				H[y*(L-1)+x, offset + y*(L-1) + x] = 1
+			if y > 0:
+				H[y*(L-1)+x, offset + (y-1)*(L-1) + x] = 1
+	return H, logical
+
+
+# plot square lattice surface code with rough boundaries
+def plt_surface_code_non_periodic(L, error, correction, syndrome):
+	for y in range(L):
+		for x in range(L-1):
+			if syndrome[y*(L-1)+x]:
+				plt.plot([x], [y], 'or')
+			else:
+				plt.plot([x], [y], 'ok')
+	for y in range(L):
+		for x in range(L):
+			if error[y*L+x] and not correction[y*L+x]:
+				plt.plot([x - 0.5], [y], '.r')
+			elif not error[y*L+x] and correction[y*L+x]:
+				plt.plot([x - 0.5], [y], '.m')
+			elif error[y*L+x] and correction[y*L+x]:
+				plt.plot([x - 0.5], [y], '.g')
+	offset = L**2  # offset of vertical edges
+	for y in range(L-1):
+		for x in range(L-1):
+			if error[offset + y*(L-1) + x] and not correction[offset + y*(L-1) + x]:
+				plt.plot([x], [y + 0.5], '.r')
+			elif not error[offset + y*(L-1) + x] and correction[offset + y*(L-1) + x]:
+				plt.plot([x], [y + 0.5], '.m')
+			elif error[offset + y*(L-1) + x] and correction[offset + y*(L-1) + x]:
+				plt.plot([x], [y + 0.5], '.g')
+	plt.title('or = non-zero syndrome | .r = error | .m = correction | .g = error+correction')
+	plt.show()
 
 
 def s_power(m, power):
