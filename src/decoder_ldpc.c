@@ -71,6 +71,35 @@ static int findroot(Graph* g, int i){
   return g->ptr[i] = findroot(g, g->ptr[i]);  // recursively go to root node, plus: do path-compression on the fly
 }
 
+/* get random number in range [0, 1ul<<64) (CSTD_RAND_MAX=0x7FFF: RAND_MAX guaranteed by C standard) */
+static uint64_t rand63(void) {
+  const uint64_t b0 = rand() & CSTD_RAND_MAX;
+  const uint64_t b1 = rand() & CSTD_RAND_MAX;
+  const uint64_t b2 = rand() & CSTD_RAND_MAX;
+  const uint64_t b3 = rand() & CSTD_RAND_MAX;
+  const uint64_t b4 = rand() & 0x7; // 3 more bits
+  const uint64_t k = (b0) | (b1 << 15) | (b2 << 30) | (b3 << 45) | (b4 << 60);
+  return k;
+}
+
+/* get random number with more than 32-bit precision, uniform in range [0, n) */
+static uint64_t rand_range(uint64_t n) {
+  uint64_t max = (1ULL << 63) - (1ULL << 63) % n - 1;
+  uint64_t r = rand63();
+  while (r > max) r = rand63();
+  return r % n;
+}
+
+/* helper function to shuffle elements of array */
+static void randomize_array(int* array, int len){
+  for (int i=0; i<len; i++){
+    int j = i + rand_range(len-i);
+    int temp = array[i];
+    array[i] = array[j];
+    array[j] = temp;
+  }
+}
+
 /* decode cluster given root node of it, return if decoding is possible */
 bool ldpc_decode_cluster(Graph* g, int root){
   /* go through cluster breadth first and build reduced H-matrix */
@@ -262,15 +291,20 @@ void ldpc_syndrome_validation_and_decode(Graph* g, int num_syndromes){
     bf_pos++;
   }
 
+  /* randomize the active part of bf_list */
+  //randomize_array(bf_list + bf_pos, bf_next - bf_pos);
+
   /* grow clusters with method derived from breadth-first traversal (grow here in double steps such that the cluster boundary is always syndrome checks) */
   while(g->num_invalid > 0){
     int n = bf_list[bf_pos];
     int r_n = findroot(g, n);
     if(g->parity[r_n]){ // only grow invalid cluster
+      bool reevaluate = false; // only evaluate again if merges with other invalid cluster
       for(uint8_t i=0; i<g->len_nb[n]; i++){
         int nb = g->nn_syndr[(n - g->n_qbt)*g->num_nb_max_syndr + i]; // this neighbor is always a data qubit (no check qubit), so it cannot have been skipped nor be part of another cluster
         int r_nb = findroot(g, nb);
         if(r_n != r_nb){
+          if(g->parity[r_nb]) reevaluate = true;
           r_n = merge_root(g, r_n, r_nb);
           for(uint8_t j=0; j<g->len_nb[nb]; j++){
             int nb2 = g->nn_qbt[nb*g->num_nb_max_qbt + j]; // this neighbor is always a syndrome, so it can have been skipped or be part of another cluster
@@ -290,7 +324,10 @@ void ldpc_syndrome_validation_and_decode(Graph* g, int num_syndromes){
               a_skipped[r_nb2] = NULL;
             }
 
-            if(r_n != r_nb2) r_n = merge_root(g, r_n, r_nb2);
+            if(r_n != r_nb2){
+              if(g->parity[r_nb2]) reevaluate = true;
+              r_n = merge_root(g, r_n, r_nb2);
+            }
             if (g->visited[nb2] == false) {
               bf_list[bf_next] = nb2;
               bf_next = (bf_next + 1) % nnode;
@@ -299,7 +336,11 @@ void ldpc_syndrome_validation_and_decode(Graph* g, int num_syndromes){
           }
         }
       }
-      update_cluster_validity(g, r_n);
+      if(reevaluate){
+        update_cluster_validity(g, r_n);
+      } else {
+        g->parity[r_n] = 1; // keep invalid (set 1 as root may have changed)
+      }
     } else {
       if (a_skipped[r_n] == NULL){
         a_skipped[r_n] = malloc(sizeof(nodeSk));
