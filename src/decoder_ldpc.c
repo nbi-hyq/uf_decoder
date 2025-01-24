@@ -71,6 +71,21 @@ static int findroot(Graph* g, int i){
   return g->ptr[i] = findroot(g, g->ptr[i]);  // recursively go to root node, plus: do path-compression on the fly
 }
 
+/* helper function to order bf-list with nodes of invalid cluster first */
+static void order_bf_list(Graph* g, int* array, int len){
+  int j = len-1;
+  for (int i=0; i<len; i++){
+   if (!g->parity[findroot(g, array[i])]){ // if cluster on the left of the list is valid
+     while(!g->parity[findroot(g, array[j])] && j>i) j--; // find cluster on the right of the list that is invalid
+     if(j>i){ // swap entries in list
+       int temp = array[i];
+       array[i] = array[j];
+       array[j] = temp;
+     } else break;
+   }
+  }
+}
+
 /* decode cluster given root node of it, return if decoding is possible */
 bool ldpc_decode_cluster(Graph* g, int root){
   /* go through cluster breadth first and build reduced H-matrix */
@@ -261,6 +276,9 @@ void ldpc_syndrome_validation_and_decode(Graph* g, int num_syndromes){
     update_cluster_validity(g, r_n);
     bf_pos++;
   }
+
+  /* order active part of bf_list such that syndromes belonging to invalid clusters come first */
+  order_bf_list(g, bf_list + bf_pos, bf_next - bf_pos);
 
   /* grow clusters with method derived from breadth-first traversal (grow here in double steps such that the cluster boundary is always syndrome checks) */
   while(g->num_invalid > 0){
