@@ -28,7 +28,7 @@ for i, n_qbt in enumerate(n_list):
     print('n = ', n_qbt)
     bicycle_code = codes.BBCode(l_dims[i], l_terms_a[i], l_terms_b[i])
     Hz = np.array(bicycle_code.matrix_z).astype(np.uint8)
-    lz = np.array(bicycle_code.get_logical_ops()[1, :, :]).astype(np.uint8)
+    lz = np.array(bicycle_code.get_logical_ops()[k_list[i]:,n_list[i]:]).astype(np.uint8)
 
     uf_decoder = UFDecoder(Hz)
 
