@@ -1,6 +1,6 @@
 import numpy as np
 import unittest
-from qldpc import codes
+from some_codes import get_bb
 from py_decoder import UFDecoder
 
 
@@ -13,17 +13,14 @@ class TestDecodeBBCode(unittest.TestCase):
     # test that error + correction gives zeros syndromes
     def test_decoding(self, l_p_err, l_p_erasure):
         # code parameters from https://arxiv.org/pdf/2308.07915 Table 3:
-        from sympy.abc import x, y 
-        l_dims = [{x: 6, y: 6}, {x: 15, y: 3}, {x: 9, y: 6}, {x: 12, y: 6}, {x: 12, y: 12}]
-        l_terms_a = [x**3+y+y**2, x**9+y+y**2, x**3+y+y**2, x**3+y+y**2, x**3+y**2+y**7]
-        l_terms_b = [y**3+x+x**2, 1+x**2+x**7, y**3+x+x**2, y**3+x+x**2, y**3+x+x**2]
+        l_dims = [[6, 6], [15, 3], [9, 6], [12, 6], [12, 12]]
+        pow_a = [[3, 1, 2], [9, 1, 2], [3, 1, 2], [3, 1, 2], [3, 2, 7]]
+        pow_b = [[3, 1, 2], [0, 2, 7], [3, 1, 2], [3, 1, 2], [3, 1, 2]]
 
         for i in range(len(l_dims)):
-            bicycle_code = codes.BBCode(l_dims[i], l_terms_a[i], l_terms_b[i])
-            Hz = np.array(bicycle_code.matrix_z).astype(np.uint8)
-            Hx = np.array(bicycle_code.matrix_z).astype(np.uint8)
+            Hx, Hz = get_bb(l_dims[i][0], l_dims[i][1], pow_a[i], pow_b[i])  #.astype(np.uint8)
             for h_css in [Hz, Hx]:
-                g = UFDecoder(h_css)
+                g = UFDecoder(h_css.astype(np.uint8))
                 for p_erasure in l_p_erasure:
                     for p_err  in l_p_err:
                         # apply noise and get syndromes
