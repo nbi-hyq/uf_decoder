@@ -7,12 +7,12 @@
    (in data-structures such as ptr that contain data qubity and syndromes, the data qubits must come first)*/
 Graph new_graph(int n_qbt, uint8_t num_nb_max_qbt, int n_syndr, uint8_t num_nb_max_syndr){
   Graph g; // data qubits come before syndromes in indexing
-  int nnode = n_qbt + n_syndr;
-  g.ptr = malloc(nnode * sizeof(int)); // if ptr[i]>0: parent index ("pointer"), elif ptr[i]<0: size of cluster, qubits and syndromes
-  g.visited = malloc(nnode * sizeof(bool)); // node visited (added to bfs_list)
-  g.parity = malloc(nnode * sizeof(bool)); // parity of syndromes in cluster (has meaning only for root node), 0: even number of syndromes
-  g.num_qbt = malloc(nnode * sizeof(int)); // number of data qubits in cluster (only for ldpc decoder)
-  g.len_nb = malloc(nnode); // until which index there are neighbors (255 neighbors max)
+  g.nnode = n_qbt + n_syndr;
+  g.ptr = malloc(g.nnode * sizeof(int)); // if ptr[i]>0: parent index ("pointer"), elif ptr[i]<0: size of cluster, qubits and syndromes
+  g.visited = malloc(g.nnode * sizeof(bool)); // node visited (added to bfs_list)
+  g.parity = malloc(g.nnode * sizeof(bool)); // parity of syndromes in cluster (has meaning only for root node), 0: even number of syndromes
+  g.num_qbt = malloc(g.nnode * sizeof(int)); // number of data qubits in cluster (only for ldpc decoder)
+  g.len_nb = malloc(g.nnode); // until which index there are neighbors (255 neighbors max)
   g.nn_qbt = malloc(n_qbt * (size_t)num_nb_max_qbt * sizeof(int)); // neighbors of a data qubit
   g.nn_syndr = malloc(n_syndr * (size_t)num_nb_max_syndr * sizeof(int)); // neighbors of a syndrome
   g.syndrome = malloc(n_syndr * sizeof(bool)); // syndrome (for node type 0)

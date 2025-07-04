@@ -69,7 +69,7 @@ def plt_2d_square_toric_code(size, error, correction, syndrome, nsyndromes):
 # square lattice surface code with rough boundaries at x=0 and x=L-1, L: code distance (same for X- and Z-type errors)
 # (primal and dual have the same parity check matrix, but rotated by 90°)
 def surface_code_non_periodic(L):
-    H = np.zeros((L*(L-1), 2*L*L*2 - 2*L + 1), dtype=np.uint8)  # primal or dual
+    H = np.zeros((L*(L-1), 2*L*L - 2*L + 1), dtype=np.uint8)  # primal or dual
     logical = np.zeros(2*L*L*2 - 2*L + 1, dtype=np.uint8)
     for y in range(L):
         logical[y*L] = 1

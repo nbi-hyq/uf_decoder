@@ -35,6 +35,27 @@ static int merge_root(Graph* g, int r1, int r2){
   return r1;
 }
 
+/* merge two graph fragments in g->ptr representation, return new root node index, update cluster parity
+   use for non-periodic boundaries (cluster size is defined large to ensure rooting at boundary):
+   this version ensures that the cluster size cannot go above g->nnode (excludes overflow for codes > 256*256, and algorithm2s) */
+static int merge_root_np(Graph* g, int r1, int r2){
+  if (g->parity[r1] && g->parity[r2]) g->num_invalid -= 2;
+  else if ((g->len_nb[r2] == 1 && g->parity[r1]) || (g->len_nb[r1] == 1 && g->parity[r2])) g->num_invalid -= 1; // one is boundary (so valid), check g->parity is not needed if only invalid clusters are grown
+  if (g->ptr[r1] > g->ptr[r2]){
+    g->parity[r2] = (g->parity[r1] != g->parity[r2]) && (g->len_nb[r1] > 1) && (g->len_nb[r2] > 1); // only invalid if even parity and not connected to boundary
+    g->ptr[r2] += g->ptr[r1]; // add size of smaller component to bigger one
+    if(g->ptr[r2] < - g->nnode) g->ptr[r2] = - g->nnode; // only needed for non-periodic boundaries
+    g->ptr[r1] = r2; // attach component with root r1 to larger component with root r2
+    r1 = r2; // update root
+  } else {
+    g->parity[r1] = (g->parity[r1] != g->parity[r2]) && (g->len_nb[r1] > 1) && (g->len_nb[r2] > 1); // only invalid if even parity and not connected to boundary
+    g->ptr[r1] += g->ptr[r2]; // add size of smaller component to bigger one
+    if(g->ptr[r1] < - g->nnode) g->ptr[r1] = - g->nnode; // only needed for non-periodic boundaries
+    g->ptr[r2] = r1; // attach component with root r2 to larger component with root r1
+  }
+  return r1;
+}
+
 /* apply erasures and Pauli errors, compute syndromes at same time
    p_erasure: probability of erasure
    p_error: probability of error */
@@ -186,7 +207,8 @@ int get_even_clusters_bfs_skip(Graph* g, int num_syndromes){
   return bfs_next;
 }
 
-/* used for storing skipped nodes in linked list connected to cluster root */
+/* for algorithm 2: used for storing skipped nodes in linked list connected to cluster root
+   for algorithm 2s: used for bucket list */
 struct nodeSk {
   int i_node;
   struct nodeSk* next;
@@ -207,6 +229,76 @@ static void free_nodeSk_list(nodeSk* node){
     free(h);
   }
   free(node);
+}
+
+typedef struct {
+  int size_max; // maximum possible size of cluster
+  int size; // current cluster size (used as index, 0 left blank)
+  nodeSk* pos; // current node in bucket list
+  nodeSk** begin; // first node at given size
+  nodeSk** end; // last node at given size (to attach next node)
+} BucketList;
+
+static BucketList new_bucket_list(int size_max){
+  BucketList bctl;
+  bctl.size_max = size_max;
+  bctl.size = 1;
+  bctl.begin = malloc((size_max+1) * sizeof(nodeSk*));
+  bctl.end = malloc((size_max+1) * sizeof(nodeSk*));
+  for(int i=0; i<size_max+1; i++) bctl.end[i] = NULL; // no need to initialize bctl.begin
+  return bctl;
+}
+
+static void free_bucket_list(BucketList* bctl){
+  for(int i=1; i<=bctl->size_max; i++){
+    if(bctl->end[i] != NULL) free_nodeSk_list(bctl->begin[i]);
+  }
+  free(bctl->end);
+  free(bctl->begin);
+}
+
+/* go to the next cluster according to bucket list */
+static void bucket_go_next(BucketList* bctl){
+  if(bctl->pos->next == NULL){
+    bctl->size++;
+    while(bctl->end[bctl->size] == NULL) bctl->size++;
+    bctl->pos = bctl->begin[bctl->size]; // go to first cluster of larger size
+  } else {
+    bctl->pos = bctl->pos->next; // go to next cluster of same size
+  }
+}
+
+/* add new cluster entry in bucket list */
+static void bucket_add(BucketList* bctl, int size, int idx_node){
+  if(bctl->end[size] == NULL){
+    bctl->end[size] = malloc(sizeof(nodeSk));
+    bctl->begin[size] = bctl->end[size];
+    bctl->end[size]->i_node = idx_node;
+    bctl->end[size]->next = NULL;
+  } else {
+    connect_node(bctl->end[size], idx_node);
+    bctl->end[size] = bctl->end[size]->next;
+  }
+}
+
+typedef struct {
+  int* next; // given a node index, get next node in cluster path
+  int* start; // beginning of active region in cluster path (only has a meening for root nodes)
+  int* stop; // end of active region in cluster path (only has a meening for root nodes)
+} ClusterPath; // its active part in the interval [start, stop] is the cluster boundary
+
+static ClusterPath new_cluster_path(int nnode){
+  ClusterPath clp;
+  clp.next = malloc(nnode * sizeof(int));
+  clp.start = malloc(nnode * sizeof(int));
+  clp.stop = malloc(nnode * sizeof(int));
+  return clp;
+}
+
+static void free_cluster_path(ClusterPath* clp){
+  free(clp->next);
+  free(clp->start);
+  free(clp->stop);
 }
 
 /* algorithm 2: get clusters with even number of syndromes by breadth-first traversal (skip even clusters, but store skipped nodes with root for later)
@@ -328,6 +420,81 @@ int get_even_clusters_bfs_skip_store_root(Graph* g, int num_syndromes){
   return bfs_next;
 }
 
+/* algorithm 2s: grow node-by-node in syndrome validation and grow small clusters first */
+void algorithm2s(Graph* g, int num_syndromes){
+  memset(g->visited, 0, g->nnode * sizeof(bool)); // visited indicates if node is part of any cluster, i.e. cluster path with more than one node (peeling decoder needs this information)
+  BucketList bctl = new_bucket_list(g->nnode);
+  ClusterPath clp = new_cluster_path(g->nnode);
+  for(int i=0; i < g->n_qbt; i++){
+    clp.start[i] = i;
+    clp.stop[i] = i;
+    if (g->erasure[i]){ // erasures 1st (if only erasure errors, one is done after doing one step from here in Tanner graph)
+      bucket_add(&bctl, 1, i); // none is invalid cluster but add all in beginning to grow one step from all erasures (for boundary nodes, the size oe snot match to -ptr)
+      g->visited[i] = true;
+    }
+    if(g->len_nb[i] > 1) g->ptr[i] = -1; // all isolated nodes in beginning
+    else g->ptr[i] = - g->nnode; // this way everything gets rooted at the boundary
+  }
+  for(int i=0; i < g->n_syndr; i++){
+    clp.start[i + g->n_qbt] = i + g->n_qbt;
+    clp.stop[i + g->n_qbt] = i + g->n_qbt;
+    if (g->syndrome[i]){ // syndromes 2nd
+      bucket_add(&bctl, 1, i + g->n_qbt); // all is size 1 initially
+      g->visited[i + g->n_qbt] = true;
+    }
+    g->ptr[i + g->n_qbt] = -1; // all isolated nodes in beginning
+  }
+  bctl.pos = bctl.begin[1]; // start at first cluster with size 1
+  g->num_invalid = num_syndromes; // number of unpaired syndromes
+
+  while(g->num_invalid > 0){
+    int r_n = bctl.pos->i_node;
+    if(bctl.size == -g->ptr[findroot(g, r_n)] || (bctl.size == 1 && bctl.pos->i_node < g->n_qbt && g->erasure[bctl.pos->i_node])){ // if no merge has happened (size matches bucket), the cluster must be invalid + r_n is the root, 2nd condition only needed to grow on step from erased boundary nodes (on rough surface)
+      int n = clp.start[r_n];
+      uint8_t num_nb_max;
+      int* nn;
+      int idx_arry; // index in syndrome or data qubit array
+      if(n < g->n_qbt){
+        num_nb_max = g->num_nb_max_qbt;
+        nn = g->nn_qbt;
+        idx_arry = n;
+      } else {
+        num_nb_max = g->num_nb_max_syndr;
+        nn = g->nn_syndr;
+        idx_arry = n - g->n_qbt;
+      }
+      /* grow by one step from node n */
+      bool grown = false; // indicate if anything was grown in this step, if false stay at same cluster
+      for(uint8_t i=0; i<g->len_nb[n]; i++){
+        int nb = nn[idx_arry*num_nb_max + i];
+        int r_nb = findroot(g, nb);
+        if(r_n != r_nb){
+          grown = true;
+          if(g->ptr[r_n] <= g->ptr[r_nb]){ // r_n cluster is larger or equal (r_nb can be valid or invalid, so this can be true or false)
+            clp.next[clp.stop[r_n]] = clp.start[r_nb]; // TBD (possible modification): make sure the smaller part (active region of r_n) is grown before the larger part (active region of r_nb)
+            clp.stop[r_n] = clp.stop[r_nb];
+          } else { // r_n cluster is smaller than r_nb cluster
+            clp.next[clp.stop[r_n]] = clp.start[r_nb];
+            clp.start[r_nb] = clp.start[r_n]; // r_nb will become new root upon merge (tree and cluster path must be kept consistent)
+          }
+          r_n = merge_root_np(g, r_n, r_nb); // this merge variant is required for non-periodic boundaries
+          g->visited[nb] = true;
+        }
+      }
+      clp.start[r_n] = clp.next[clp.start[r_n]]; // go to next node in same cluster
+
+      if(grown == true) {
+        if(g->parity[r_n]) bucket_add(&bctl, - g->ptr[r_n], r_n); // if it is invalid, add updated cluster to bucket list after node fully grown
+        if(g->num_invalid > 0) bucket_go_next(&bctl); // go to next bucket if there is a next invalid cluster (without if check one can run above bctl.size_max for non-periodic boundaries, e.g. if only error is at boundary node)
+      }
+    } else {
+      bucket_go_next(&bctl);
+    }
+  }
+  free_cluster_path(&clp);
+  free_bucket_list(&bctl);
+}
+
 /* get forest spanning the erasure clusters */
 Forest get_forest(Graph* g){
   Forest f = new_forest(g->n_qbt + g->n_syndr);
@@ -441,23 +608,24 @@ void collect_graph_and_decode(int n_qbt, int n_syndr, uint8_t num_nb_max_qbt, ui
   Graph g;
   g.n_qbt = n_qbt;
   g.n_syndr = n_syndr;
-  g.ptr = malloc((n_qbt + n_syndr) * sizeof(int)); // if ptr[i]>0: parent index ("pointer"), elif ptr[i]<0: size of cluster, qubits and syndromes
+  g.nnode = n_qbt + n_syndr;
+  g.ptr = malloc(g.nnode * sizeof(int)); // if ptr[i]>0: parent index ("pointer"), elif ptr[i]<0: size of cluster, qubits and syndromes
   g.nn_qbt = nn_qbt; // neighbors of data qubit
   g.nn_syndr = nn_syndr; // neighbors of syndrome
   g.len_nb = len_nb; // until which index there are neighbors (255 neighbors max)
   g.num_nb_max_qbt = num_nb_max_qbt; // maximum number of neighbors per data qubit
   g.num_nb_max_syndr = num_nb_max_syndr; // maximum number of neighbors per syndrome
-  g.visited = malloc((n_qbt + n_syndr) * sizeof(bool)); // node visited (e.g. in breadth-first traversal)
+  g.visited = malloc(g.nnode * sizeof(bool)); // node visited (e.g. in breadth-first traversal)
   g.syndrome = syndrome;
   g.erasure = erasure;
-  g.parity = malloc((n_qbt + n_syndr) * sizeof(bool)); // parity of syndromes in cluster (has meaning only for root node), 0: even number of syndromes
+  g.parity = malloc(g.nnode * sizeof(bool)); // parity of syndromes in cluster (has meaning only for root node), 0: even number of syndromes
   g.decode = decode; // decoder output
   memset(g.parity, 0, g.n_qbt * sizeof(bool));
   memcpy(g.parity + g.n_qbt, g.syndrome, g.n_syndr * sizeof(bool)); // syndrome and parity of cluster starts as the same thing (when all nodes are isolated)
 
   int num_syndrome = 0;
   for(int i=0; i<g.n_syndr; i++) if(syndrome[i]) num_syndrome++;
-  get_even_clusters_bfs_skip_store_root(&g, num_syndrome);
+  algorithm2s(&g, num_syndrome);
   Forest f = get_forest(&g);
   peel_forest(&f, &g);
   free_forest(&f);
@@ -472,14 +640,15 @@ void collect_graph_and_decode_batch(int n_qbt, int n_syndr, uint8_t num_nb_max_q
   Graph g;
   g.n_qbt = n_qbt;
   g.n_syndr = n_syndr;
-  g.ptr = malloc((n_qbt + n_syndr) * sizeof(int)); // if ptr[i]>0: parent index ("pointer"), elif ptr[i]<0: size of cluster, qubits and syndromes
+  g.nnode = n_qbt + n_syndr;
+  g.ptr = malloc(g.nnode * sizeof(int)); // if ptr[i]>0: parent index ("pointer"), elif ptr[i]<0: size of cluster, qubits and syndromes
   g.nn_qbt = nn_qbt; // neighbors of data qubit
   g.nn_syndr = nn_syndr; // neighbors of syndrome
   g.len_nb = len_nb; // until which index there are neighbors (255 neighbors max)
   g.num_nb_max_qbt = num_nb_max_qbt; // maximum number of neighbors per data qubit
   g.num_nb_max_syndr = num_nb_max_syndr; // maximum number of neighbors per syndrome
-  g.visited = malloc((n_qbt + n_syndr) * sizeof(bool)); // node visited (e.g. in breadth-first traversal)
-  g.parity = malloc((n_qbt + n_syndr) * sizeof(bool)); // parity of syndromes in cluster (has meaning only for root node), 0: even number of syndromes
+  g.visited = malloc(g.nnode * sizeof(bool)); // node visited (e.g. in breadth-first traversal)
+  g.parity = malloc(g.nnode * sizeof(bool)); // parity of syndromes in cluster (has meaning only for root node), 0: even number of syndromes
 
   for(int r=0; r<nrep; r++){
     g.syndrome = syndrome + r*g.n_syndr;
@@ -489,7 +658,7 @@ void collect_graph_and_decode_batch(int n_qbt, int n_syndr, uint8_t num_nb_max_q
     memcpy(g.parity + g.n_qbt, g.syndrome, g.n_syndr * sizeof(bool)); // syndrome and parity of cluster starts as the same thing (when all nodes are isolated)
     int num_syndrome = 0;
     for(int i=0; i<g.n_syndr; i++) if(g.syndrome[i]) num_syndrome++;
-    get_even_clusters_bfs_skip_store_root(&g, num_syndrome);
+    algorithm2s(&g, num_syndrome);
     Forest f = get_forest(&g);
     peel_forest(&f, &g);
     free_forest(&f);

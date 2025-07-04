@@ -1,10 +1,12 @@
 tests = [
   'toric2d_square_alg1',
   'toric2d_square_alg2',
+  'toric2d_square_alg2s',
   'toric2d_square_alg4',
   'toric2d_square_ldpc',
   'toric2d_triangular_alg1',
   'toric2d_triangular_alg2',
+  'toric2d_triangular_alg2s',
   'toric2d_triangular_alg4',
   'toric2d_triangular_ldpc',
   'logical_errors',
