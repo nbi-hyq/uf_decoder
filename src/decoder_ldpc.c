@@ -285,10 +285,12 @@ void ldpc_syndrome_validation_and_decode(Graph* g, int num_syndromes){
     int n = bf_list[bf_pos];
     int r_n = findroot(g, n);
     if(g->parity[r_n]){ // only grow invalid cluster
+      bool reevaluate = false; // only evaluate again if merges with other invalid cluster
       for(uint8_t i=0; i<g->len_nb[n]; i++){
         int nb = g->nn_syndr[(n - g->n_qbt)*g->num_nb_max_syndr + i]; // this neighbor is always a data qubit (no check qubit), so it cannot have been skipped nor be part of another cluster
         int r_nb = findroot(g, nb);
         if(r_n != r_nb){
+          if(g->parity[r_nb]) reevaluate = true;
           r_n = merge_root(g, r_n, r_nb);
           for(uint8_t j=0; j<g->len_nb[nb]; j++){
             int nb2 = g->nn_qbt[nb*g->num_nb_max_qbt + j]; // this neighbor is always a syndrome, so it can have been skipped or be part of another cluster
@@ -308,7 +310,10 @@ void ldpc_syndrome_validation_and_decode(Graph* g, int num_syndromes){
               a_skipped[r_nb2] = NULL;
             }
 
-            if(r_n != r_nb2) r_n = merge_root(g, r_n, r_nb2);
+            if(r_n != r_nb2){
+              if(g->parity[r_nb2]) reevaluate = true;
+              r_n = merge_root(g, r_n, r_nb2);
+            }
             if (g->visited[nb2] == false) {
               bf_list[bf_next] = nb2;
               bf_next = (bf_next + 1) % nnode;
@@ -317,7 +322,11 @@ void ldpc_syndrome_validation_and_decode(Graph* g, int num_syndromes){
           }
         }
       }
-      update_cluster_validity(g, r_n);
+      if(reevaluate){
+        update_cluster_validity(g, r_n);
+      } else {
+        g->parity[r_n] = 1; // keep invalid (set 1 as root may have changed)
+      }
     } else {
       if (a_skipped[r_n] == NULL){
         a_skipped[r_n] = malloc(sizeof(nodeSk));
